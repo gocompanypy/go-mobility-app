@@ -1,0 +1,543 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/lib/utils';
+import { MapPin, Clock, CreditCard, History, User, Menu, ChevronRight, Car, Calendar, Bike, Key, Truck, Package, UtensilsCrossed, Search, Gift, Tag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Logo from '@/components/go/Logo';
+import AddressInput from '@/components/go/AddressInput';
+import LiveMap from '@/components/go/LiveMap';
+import VehicleCard3D from '@/components/go/VehicleCard3D';
+import TripStatusCard from '@/components/go/TripStatusCard';
+import RatingModal from '@/components/go/RatingModal';
+import ChatPanel from '@/components/go/ChatPanel';
+import NotificationBell from '@/components/go/NotificationBell';
+import { theme } from '@/components/go/theme';
+
+export default function PassengerHome() {
+    const navigate = useNavigate();
+    const [user, setUser] = useState(null);
+    const [passenger, setPassenger] = useState(null);
+    const [step, setStep] = useState('input'); // input, vehicles, searching, trip
+    const [activeTab, setActiveTab] = useState('viajes');
+
+    // Trip request state
+    const [pickup, setPickup] = useState({ address: '', lat: null, lng: null });
+    const [dropoff, setDropoff] = useState({ address: '', lat: null, lng: null });
+    const [selectedVehicle, setSelectedVehicle] = useState('economy');
+    const [priceEstimates, setPriceEstimates] = useState([]);
+
+    // Active trip state
+    const [activeTrip, setActiveTrip] = useState(null);
+    const [showChat, setShowChat] = useState(false);
+    const [showRating, setShowRating] = useState(false);
+
+    useEffect(() => {
+        loadUserData();
+    }, []);
+
+    useEffect(() => {
+        if (activeTrip) {
+            const interval = setInterval(refreshTrip, 3000);
+            return () => clearInterval(interval);
+        }
+    }, [activeTrip?.id]);
+
+    const loadUserData = async () => {
+        try {
+            const currentUser = await base44.auth.me();
+            setUser(currentUser);
+
+            // Check for existing passenger profile
+            const passengers = await base44.entities.Passenger.filter({ created_by: currentUser.email });
+            if (passengers.length > 0) {
+                setPassenger(passengers[0]);
+            } else {
+                // Create passenger profile
+                const newPassenger = await base44.entities.Passenger.create({
+                    phone: currentUser.phone || '',
+                    first_name: currentUser.full_name?.split(' ')[0] || 'Usuario',
+                    last_name: currentUser.full_name?.split(' ').slice(1).join(' ') || '',
+                });
+                setPassenger(newPassenger);
+            }
+
+            // Check for active trip
+            const trips = await base44.entities.Trip.filter({
+                created_by: currentUser.email,
+                status: ['searching', 'accepted', 'arrived', 'in_progress']
+            });
+            if (trips.length > 0) {
+                setActiveTrip(trips[0]);
+                setStep('trip');
+            }
+        } catch (error) {
+            console.error('Error loading user:', error);
+        }
+    };
+
+    const refreshTrip = async () => {
+        if (!activeTrip?.id) return;
+        try {
+            const trips = await base44.entities.Trip.filter({ id: activeTrip.id });
+            if (trips.length > 0) {
+                setActiveTrip(trips[0]);
+                if (['completed', 'cancelled_passenger', 'cancelled_driver', 'no_drivers'].includes(trips[0].status)) {
+                    if (trips[0].status === 'completed' && !trips[0].passenger_rating) {
+                        setShowRating(true);
+                    } else {
+                        setStep('input');
+                        setActiveTrip(null);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing trip:', error);
+        }
+    };
+
+    const calculatePrices = async () => {
+        if (!pickup.lat || !dropoff.lat) return;
+
+        try {
+            const configs = await base44.entities.PriceConfig.filter({ is_active: true });
+
+            // Calculate distance (simplified - using Haversine formula approximation)
+            const distance = Math.sqrt(
+                Math.pow((dropoff.lat - pickup.lat) * 111, 2) +
+                Math.pow((dropoff.lng - pickup.lng) * 111 * Math.cos(pickup.lat * Math.PI / 180), 2)
+            );
+
+            const duration = Math.round(distance * 3); // Approx 3 min per km
+
+            const estimates = configs.map(config => {
+                const price = config.base_fare +
+                    (distance * config.price_per_km) +
+                    (duration * config.price_per_min);
+                return {
+                    vehicle_type: config.vehicle_type,
+                    estimated_price: Math.max(price, config.minimum_fare),
+                    estimated_distance: distance,
+                    estimated_duration: duration,
+                    surge_multiplier: 1.0,
+                };
+            });
+
+            setPriceEstimates(estimates);
+            setStep('vehicles');
+        } catch (error) {
+            console.error('Error calculating prices:', error);
+        }
+    };
+
+    const requestTrip = async () => {
+        const estimate = priceEstimates.find(e => e.vehicle_type === selectedVehicle);
+        if (!estimate) return;
+
+        setStep('searching');
+
+        try {
+            const trip = await base44.entities.Trip.create({
+                passenger_id: passenger.id,
+                passenger_name: `${passenger.first_name} ${passenger.last_name}`,
+                passenger_phone: passenger.phone,
+                pickup_lat: pickup.lat,
+                pickup_lng: pickup.lng,
+                pickup_address: pickup.address,
+                dropoff_lat: dropoff.lat,
+                dropoff_lng: dropoff.lng,
+                dropoff_address: dropoff.address,
+                vehicle_type: selectedVehicle,
+                estimated_distance: estimate.estimated_distance,
+                estimated_duration: estimate.estimated_duration,
+                estimated_price: estimate.estimated_price,
+                surge_multiplier: estimate.surge_multiplier,
+                status: 'searching',
+            });
+
+            setActiveTrip(trip);
+            setStep('trip');
+        } catch (error) {
+            console.error('Error creating trip:', error);
+            setStep('vehicles');
+        }
+    };
+
+    const cancelTrip = async () => {
+        if (!activeTrip) return;
+
+        try {
+            await base44.entities.Trip.update(activeTrip.id, {
+                status: 'cancelled_passenger',
+                cancellation_reason: 'Cancelado por pasajero',
+                cancelled_by: 'passenger',
+            });
+            setActiveTrip(null);
+            setStep('input');
+        } catch (error) {
+            console.error('Error cancelling trip:', error);
+        }
+    };
+
+    const submitRating = async ({ rating, comment, tip }) => {
+        if (!activeTrip) return;
+
+        try {
+            await base44.entities.Trip.update(activeTrip.id, {
+                passenger_rating: rating,
+                tip_amount: tip,
+                final_price: (activeTrip.final_price || activeTrip.estimated_price) + tip,
+            });
+            setShowRating(false);
+            setActiveTrip(null);
+            setStep('input');
+        } catch (error) {
+            console.error('Error submitting rating:', error);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-black text-white">
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-xl border-b border-[#FFD700]/20 gold-glow" style={{ boxShadow: '0 4px 24px rgba(255, 215, 0, 0.15)' }}>
+                <div className="flex items-center justify-between px-4 py-3">
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-white">
+                                <Menu size={24} />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="bg-black border-[#FFD700]/20 text-white w-80 gold-border" style={{ boxShadow: '0 0 40px rgba(255, 215, 0, 0.2)' }}>
+                            <div className="py-6">
+                                <Logo size="md" className="mb-8" />
+
+                                <div className="flex items-center gap-3 p-4 rounded-xl mb-6 gold-border gold-glow" style={{ background: 'linear-gradient(135deg, #0A0A0A, #000000)' }}>
+                                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FFD700, #FFA500)', boxShadow: '0 4px 16px rgba(255, 215, 0, 0.4)' }}>
+                                        <User size={24} className="text-black" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">{passenger?.first_name} {passenger?.last_name}</p>
+                                        <p className="text-sm text-gray-400">{user?.email}</p>
+                                    </div>
+                                </div>
+
+                                <nav className="space-y-2">
+                                    <button
+                                        onClick={() => navigate(createPageUrl('PassengerHistory'))}
+                                        className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <History size={20} className="text-gray-400" />
+                                            Mis viajes
+                                        </span>
+                                        <ChevronRight size={18} className="text-gray-400" />
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(createPageUrl('PassengerRewards'))}
+                                        className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <Gift size={20} className="text-[#FFD700]" />
+                                            GO Rewards
+                                        </span>
+                                        <ChevronRight size={18} className="text-gray-400" />
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(createPageUrl('PassengerPromotions'))}
+                                        className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <Tag size={20} className="text-[#FFD700]" />
+                                            Promociones
+                                        </span>
+                                        <ChevronRight size={18} className="text-gray-400" />
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(createPageUrl('PassengerPayments'))}
+                                        className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <CreditCard size={20} className="text-gray-400" />
+                                            Métodos de pago
+                                        </span>
+                                        <ChevronRight size={18} className="text-gray-400" />
+                                    </button>
+                                </nav>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+
+                    <Logo size="sm" />
+
+                    <div className="flex items-center gap-2">
+                        <NotificationBell userId={passenger?.id} userType="passenger" />
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-white"
+                            onClick={() => navigate(createPageUrl('PassengerHistory'))}
+                        >
+                            <History size={24} />
+                        </Button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Tabs */}
+            {!activeTrip && (
+                <div className="fixed top-16 left-0 right-0 z-30 bg-black/95 backdrop-blur-xl border-b border-[#FFD700]/20 px-4 py-2" style={{ boxShadow: '0 4px 24px rgba(255, 215, 0, 0.1)' }}>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="grid w-full max-w-md grid-cols-2 bg-[#0A0A0A] border border-[#FFD700]/20">
+                            <TabsTrigger value="viajes" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FFD700] data-[state=active]:to-[#FFA500] data-[state=active]:text-black data-[state=active]:font-bold">
+                                <Car size={18} className="mr-2" />
+                                Viajes
+                            </TabsTrigger>
+                            <TabsTrigger value="eats" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FFD700] data-[state=active]:to-[#FFA500] data-[state=active]:text-black data-[state=active]:font-bold">
+                                <UtensilsCrossed size={18} className="mr-2" />
+                                Go Eats
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+            )}
+
+            {/* Main Content */}
+            <main className={`${!activeTrip ? 'pt-28' : 'pt-16'} pb-4 min-h-screen flex flex-col`}>
+                {/* Map Area */}
+                <div className="flex-1 relative">
+                    <LiveMap
+                        pickupLat={pickup.lat}
+                        pickupLng={pickup.lng}
+                        dropoffLat={dropoff.lat}
+                        dropoffLng={dropoff.lng}
+                        driverLat={activeTrip?.driver_lat}
+                        driverLng={activeTrip?.driver_lng}
+                        className="h-full min-h-[300px]"
+                    />
+                </div>
+
+                {/* Bottom Panel */}
+                <div className="bg-black rounded-t-3xl -mt-6 relative z-10 border-t-2 border-[#FFD700]/30" style={{ boxShadow: '0 -4px 32px rgba(255, 215, 0, 0.2)' }}>
+                    <div className="w-12 h-1 rounded-full mx-auto mt-3 mb-4" style={{ background: 'linear-gradient(90deg, #FFD700, #FFA500)' }} />
+
+                    <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
+                        {/* Step: Input addresses */}
+                        {step === 'input' && (
+                            <div className="space-y-6">
+                                {/* Search Bar */}
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {/* Open search */ }}
+                                        className="flex-1 flex items-center gap-3 rounded-xl p-4 text-left border-2 transition-all gold-border"
+                                        style={{ background: 'linear-gradient(135deg, #0A0A0A, #000000)' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.3)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+                                    >
+                                        <Search size={20} className="text-[#FFD700]" />
+                                        <span className="text-gray-400">¿Adónde vas?</span>
+                                    </button>
+                                    <Button
+                                        variant="outline"
+                                        className="border-2 border-[#FFD700]/30 text-white hover:bg-[#FFD700] hover:text-black transition-all"
+                                    >
+                                        <Clock size={18} className="mr-2" />
+                                        Más tarde
+                                    </Button>
+                                </div>
+
+                                {/* Sugerencias */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="font-semibold text-lg">Sugerencias</h3>
+                                        <button className="text-sm text-gray-400 hover:text-white">Ver todo</button>
+                                    </div>
+
+                                    <div className="grid grid-cols-4 gap-3">
+                                        <button
+                                            onClick={() => {
+                                                setStep('input');
+                                                // Scroll to address inputs
+                                            }}
+                                            className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all gold-border"
+                                            style={{ background: 'linear-gradient(135deg, #0A0A0A, #000000)' }}
+                                            onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.4)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+                                        >
+                                            <Car size={32} className="text-[#FFD700]" />
+                                            <span className="text-xs text-center">Viaje</span>
+                                        </button>
+
+                                        <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
+                                            <Calendar size={32} className="text-gray-400" />
+                                            <span className="text-xs text-center">Reserva</span>
+                                        </button>
+
+                                        <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50 relative" style={{ background: '#0A0A0A' }}>
+                                            <div className="absolute top-1 right-1 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded font-bold">Promo</div>
+                                            <Bike size={32} className="text-gray-400" />
+                                            <span className="text-xs text-center">Moto</span>
+                                        </button>
+
+                                        <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
+                                            <Key size={32} className="text-gray-400" />
+                                            <span className="text-xs text-center">Vehículo alquiler</span>
+                                        </button>
+
+                                        <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50 relative" style={{ background: '#0A0A0A' }}>
+                                            <div className="absolute top-1 right-1 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded font-bold">Promo</div>
+                                            <Truck size={32} className="text-[#FFD700]" />
+                                            <span className="text-xs text-center">Fletes</span>
+                                        </button>
+
+                                        <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
+                                            <Package size={32} className="text-gray-400" />
+                                            <span className="text-xs text-center">Paquetería</span>
+                                        </button>
+
+                                        <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
+                                            <UtensilsCrossed size={32} className="text-gray-400" />
+                                            <span className="text-xs text-center">Comida</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Go Eats */}
+                                {activeTab === 'viajes' && (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="font-semibold">Pide a domicilio con <span className="text-[#00D4B1]">Eats</span></h3>
+                                            <button className="text-sm text-gray-400 hover:text-white">Ver todos</button>
+                                        </div>
+                                        <div className="bg-[#252538] rounded-xl p-4 border border-[#2D2D44]">
+                                            <p className="text-gray-400 text-sm">Restaurantes y tiendas cerca de ti</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Address Inputs (Hidden initially) */}
+                                <div className="space-y-3">
+                                    <AddressInput
+                                        type="pickup"
+                                        value={pickup.address}
+                                        onChange={(addr) => setPickup(prev => ({ ...prev, address: addr }))}
+                                        onSelect={(place) => setPickup({ address: place.address, lat: place.lat, lng: place.lng })}
+                                        savedPlaces={passenger?.saved_places || []}
+                                    />
+
+                                    <AddressInput
+                                        type="dropoff"
+                                        value={dropoff.address}
+                                        onChange={(addr) => setDropoff(prev => ({ ...prev, address: addr }))}
+                                        onSelect={(place) => setDropoff({ address: place.address, lat: place.lat, lng: place.lng })}
+                                        savedPlaces={passenger?.saved_places || []}
+                                    />
+
+                                    <Button
+                                        onClick={calculatePrices}
+                                        disabled={!pickup.lat || !dropoff.lat}
+                                        className="w-full py-6 text-black font-bold text-lg border-0 gold-glow"
+                                        style={{ background: 'linear-gradient(135deg, #FFD700, #FFA500)', boxShadow: '0 8px 32px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)' }}
+                                    >
+                                        Ver precios
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step: Select vehicle */}
+                        {step === 'vehicles' && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-bold">Elige tu GO</h2>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setStep('input')}
+                                        className="text-gray-400"
+                                    >
+                                        Cambiar ruta
+                                    </Button>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+                                    <Clock size={16} />
+                                    <span>
+                                        {priceEstimates[0]?.estimated_duration || 0} min • {priceEstimates[0]?.estimated_distance?.toFixed(1) || 0} km
+                                    </span>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {priceEstimates.map((vehicle) => (
+                                        <VehicleCard3D
+                                            key={vehicle.vehicle_type}
+                                            vehicle={vehicle}
+                                            price={vehicle.estimated_price}
+                                            time={vehicle.estimated_duration}
+                                            isSelected={selectedVehicle === vehicle.vehicle_type}
+                                            onClick={() => setSelectedVehicle(vehicle.vehicle_type)}
+                                        />
+                                    ))}
+                                </div>
+
+                                <Button
+                                    onClick={requestTrip}
+                                    className="w-full py-6 text-black font-bold text-lg border-0 gold-glow"
+                                    style={{ background: 'linear-gradient(135deg, #FFD700, #FFA500)', boxShadow: '0 8px 32px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)' }}
+                                >
+                                    Pedir {theme.vehicleTypes[selectedVehicle]?.name || 'GO'}
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Step: Searching */}
+                        {step === 'searching' && (
+                            <div className="text-center py-8">
+                                <div className="w-16 h-16 border-4 border-[#00D4B1] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                                <h2 className="text-xl font-bold mb-2">Buscando conductor...</h2>
+                                <p className="text-gray-400">Esto puede tomar unos segundos</p>
+                            </div>
+                        )}
+
+                        {/* Step: Active trip */}
+                        {step === 'trip' && activeTrip && (
+                            <TripStatusCard
+                                trip={activeTrip}
+                                userType="passenger"
+                                onCancel={cancelTrip}
+                                onChat={() => setShowChat(true)}
+                                onCall={() => alert('Función de llamada próximamente')}
+                                onRate={() => setShowRating(true)}
+                            />
+                        )}
+                    </div>
+                </div>
+            </main>
+
+            {/* Chat Panel */}
+            <ChatPanel
+                tripId={activeTrip?.id}
+                currentUserId={passenger?.id}
+                currentUserName={`${passenger?.first_name} ${passenger?.last_name}`}
+                currentUserType="passenger"
+                isOpen={showChat}
+                onClose={() => setShowChat(false)}
+            />
+
+            {/* Rating Modal */}
+            <RatingModal
+                open={showRating}
+                onClose={() => {
+                    setShowRating(false);
+                    setActiveTrip(null);
+                    setStep('input');
+                }}
+                onSubmit={submitRating}
+                targetName={activeTrip?.driver_name || 'Conductor'}
+                targetType="driver"
+                tripPrice={activeTrip?.final_price || activeTrip?.estimated_price || 0}
+            />
+        </div>
+    );
+}

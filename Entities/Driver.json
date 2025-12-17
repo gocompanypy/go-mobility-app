@@ -1,0 +1,126 @@
+{
+    "name": "Driver",
+        "type": "object",
+            "properties": {
+        "phone": {
+            "type": "string",
+                "description": "Número de teléfono del conductor"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "avatar_url": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string",
+                "enum": [
+                    "pending",
+                    "approved",
+                    "suspended",
+                    "blocked"
+                ],
+                    "default": "pending"
+        },
+        "is_online": {
+            "type": "boolean",
+                "default": false
+        },
+        "is_available": {
+            "type": "boolean",
+                "default": true
+        },
+        "current_lat": {
+            "type": "number"
+        },
+        "current_lng": {
+            "type": "number"
+        },
+        "rating": {
+            "type": "number",
+                "default": 5.0
+        },
+        "total_ratings": {
+            "type": "integer",
+                "default": 0
+        },
+        "total_trips": {
+            "type": "integer",
+                "default": 0
+        },
+        "acceptance_rate": {
+            "type": "number",
+                "default": 1.0
+        },
+        "vehicle_type": {
+            "type": "string",
+                "enum": [
+                    "economy",
+                    "comfort",
+                    "premium",
+                    "xl",
+                    "moto",
+                    "delivery",
+                    "van"
+                ],
+                    "default": "economy"
+        },
+        "vehicle_make": {
+            "type": "string"
+        },
+        "vehicle_model": {
+            "type": "string"
+        },
+        "vehicle_year": {
+            "type": "integer"
+        },
+        "vehicle_color": {
+            "type": "string"
+        },
+        "vehicle_plate": {
+            "type": "string"
+        },
+        "license_number": {
+            "type": "string"
+        },
+        "license_expiry": {
+            "type": "string",
+                "format": "date"
+        },
+        "documents_verified": {
+            "type": "boolean",
+                "default": false
+        },
+        "total_earnings": {
+            "type": "number",
+                "default": 0
+        },
+        "category": {
+            "type": "string",
+                "enum": [
+                    "estandar",
+                    "vip",
+                    "oro",
+                    "platino",
+                    "diamante"
+                ],
+                    "default": "estandar",
+                        "description": "Categoría del conductor basada en desempeño"
+        },
+        "category_benefits": {
+            "type": "array",
+                "items": {
+                "type": "string"
+            },
+            "default": []
+        }
+    },
+    "required": [
+        "phone",
+        "first_name",
+        "last_name"
+    ]
+}

@@ -1,0 +1,48 @@
+{
+    "name": "ActivePromotion",
+        "type": "object",
+            "properties": {
+        "title": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "image_url": {
+            "type": "string"
+        },
+        "promo_code": {
+            "type": "string"
+        },
+        "discount_percentage": {
+            "type": "number"
+        },
+        "valid_until": {
+            "type": "string",
+                "format": "date"
+        },
+        "is_active": {
+            "type": "boolean",
+                "default": true"
+        },
+        "target_audience": {
+            "type": "string",
+                "enum": [
+                    "all",
+                    "new_users",
+                    "vip",
+                    "frequent"
+                ],
+                    "default": "all"
+        },
+        "min_trip_amount": {
+            "type": "number",
+                "default": 0
+        }
+    },
+    "required": [
+        "title",
+        "description",
+        "promo_code"
+    ]
+}

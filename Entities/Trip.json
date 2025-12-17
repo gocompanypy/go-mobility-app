@@ -1,0 +1,163 @@
+{
+    "name": "Trip",
+        "type": "object",
+            "properties": {
+        "passenger_id": {
+            "type": "string",
+                "description": "ID del pasajero"
+        },
+        "passenger_name": {
+            "type": "string"
+        },
+        "passenger_phone": {
+            "type": "string"
+        },
+        "driver_id": {
+            "type": "string"
+        },
+        "driver_name": {
+            "type": "string"
+        },
+        "driver_phone": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string",
+                "enum": [
+                    "searching",
+                    "accepted",
+                    "arrived",
+                    "in_progress",
+                    "completed",
+                    "cancelled_passenger",
+                    "cancelled_driver",
+                    "no_drivers"
+                ],
+                    "default": "searching"
+        },
+        "pickup_lat": {
+            "type": "number"
+        },
+        "pickup_lng": {
+            "type": "number"
+        },
+        "pickup_address": {
+            "type": "string"
+        },
+        "dropoff_lat": {
+            "type": "number"
+        },
+        "dropoff_lng": {
+            "type": "number"
+        },
+        "dropoff_address": {
+            "type": "string"
+        },
+        "vehicle_type": {
+            "type": "string",
+                "enum": [
+                    "economy",
+                    "comfort",
+                    "premium",
+                    "xl",
+                    "moto",
+                    "delivery",
+                    "van"
+                ]
+        },
+        "estimated_distance": {
+            "type": "number",
+                "description": "Distancia en km"
+        },
+        "estimated_duration": {
+            "type": "integer",
+                "description": "Duración en minutos"
+        },
+        "estimated_price": {
+            "type": "number"
+        },
+        "final_price": {
+            "type": "number"
+        },
+        "surge_multiplier": {
+            "type": "number",
+                "default": 1.0
+        },
+        "payment_method": {
+            "type": "string",
+                "enum": [
+                    "card",
+                    "cash",
+                    "wallet"
+                ],
+                    "default": "card"
+        },
+        "payment_status": {
+            "type": "string",
+                "enum": [
+                    "pending",
+                    "completed",
+                    "failed"
+                ],
+                    "default": "pending"
+        },
+        "passenger_rating": {
+            "type": "integer",
+                "minimum": 1,
+                    "maximum": 5
+        },
+        "driver_rating": {
+            "type": "integer",
+                "minimum": 1,
+                    "maximum": 5
+        },
+        "tip_amount": {
+            "type": "number",
+                "default": 0
+        },
+        "cancellation_reason": {
+            "type": "string"
+        },
+        "cancelled_by": {
+            "type": "string",
+                "enum": [
+                    "passenger",
+                    "driver",
+                    "system"
+                ]
+        },
+        "accepted_at": {
+            "type": "string",
+                "format": "date-time"
+        },
+        "arrived_at": {
+            "type": "string",
+                "format": "date-time"
+        },
+        "started_at": {
+            "type": "string",
+                "format": "date-time"
+        },
+        "completed_at": {
+            "type": "string",
+                "format": "date-time"
+        },
+        "promo_code": {
+            "type": "string"
+        },
+        "discount_amount": {
+            "type": "number",
+                "default": 0
+        }
+    },
+    "required": [
+        "passenger_id",
+        "pickup_lat",
+        "pickup_lng",
+        "pickup_address",
+        "dropoff_lat",
+        "dropoff_lng",
+        "dropoff_address",
+        "vehicle_type"
+    ]
+}

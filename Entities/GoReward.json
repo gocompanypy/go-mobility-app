@@ -1,0 +1,57 @@
+{
+    "name": "GoReward",
+        "type": "object",
+            "properties": {
+        "passenger_id": {
+            "type": "string",
+                "description": "ID del pasajero"
+        },
+        "points_balance": {
+            "type": "integer",
+                "default": 0,
+                    "description": "Puntos acumulados"
+        },
+        "lifetime_points": {
+            "type": "integer",
+                "default": 0,
+                    "description": "Total de puntos ganados en toda la vida"
+        },
+        "tier": {
+            "type": "string",
+                "enum": [
+                    "bronze",
+                    "silver",
+                    "gold",
+                    "platinum",
+                    "diamond"
+                ],
+                    "default": "bronze",
+                        "description": "Nivel de membresía"
+        },
+        "points_to_next_tier": {
+            "type": "integer",
+                "default": 100
+        },
+        "benefits": {
+            "type": "array",
+                "items": {
+                "type": "object",
+                    "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "active": {
+                        "type": "boolean",
+                            "default": true"
+                    }
+                }
+            }
+        }
+    },
+    "required": [
+        "passenger_id"
+    ]
+}

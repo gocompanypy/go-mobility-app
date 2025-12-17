@@ -1,0 +1,81 @@
+{
+    "name": "Passenger",
+        "type": "object",
+            "properties": {
+        "phone": {
+            "type": "string"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "avatar_url": {
+            "type": "string"
+        },
+        "rating": {
+            "type": "number",
+                "default": 5.0
+        },
+        "total_ratings": {
+            "type": "integer",
+                "default": 0
+        },
+        "total_trips": {
+            "type": "integer",
+                "default": 0
+        },
+        "preferred_payment": {
+            "type": "string",
+                "enum": [
+                    "card",
+                    "cash",
+                    "wallet"
+                ],
+                    "default": "card"
+        },
+        "wallet_balance": {
+            "type": "number",
+                "default": 0
+        },
+        "saved_places": {
+            "type": "array",
+                "items": {
+                "type": "object",
+                    "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": "string"
+                    },
+                    "lat": {
+                        "type": "number"
+                    },
+                    "lng": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "emergency_contacts": {
+            "type": "array",
+                "items": {
+                "type": "object",
+                    "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "required": [
+        "phone",
+        "first_name"
+    ]
+}
