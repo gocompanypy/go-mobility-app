@@ -37,7 +37,7 @@ import AdminTrips from './Pages/AdminTrips';
 import AdminPricing from './Pages/AdminPricing';
 
 // Components
-import UserNotRegisteredError from './Components/UserNotRegisteredError';
+import UserNotRegisteredError from './components/UserNotRegisteredError';
 
 export default function App() {
     return (

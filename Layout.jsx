@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, Home, Car, User, Settings, LogOut, LayoutDashboard, Crown, Archive, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import Logo from '@/Components/go/Logo';
+import Logo from '@/components/go/Logo';
 
 export default function Layout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -52,8 +52,8 @@ export default function Layout() {
                             to={item.path}
                             onClick={() => setIsSidebarOpen(false)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                    ? 'bg-[#00D4B1]/10 text-[#00D4B1]'
-                                    : 'text-gray-400 hover:bg-[#252538] hover:text-white'
+                                ? 'bg-[#00D4B1]/10 text-[#00D4B1]'
+                                : 'text-gray-400 hover:bg-[#252538] hover:text-white'
                                 }`}
                         >
                             <Icon size={20} />
