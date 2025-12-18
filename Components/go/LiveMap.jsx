@@ -34,6 +34,20 @@ function MapUpdater({ center, zoom }) {
         }
     }, [center, zoom, map]);
 
+    useEffect(() => {
+        // Invalidate size when container resizes
+        const resizeObserver = new ResizeObserver(() => {
+            map.invalidateSize();
+        });
+
+        const container = map.getContainer();
+        resizeObserver.observe(container);
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [map]);
+
     return null;
 }
 
@@ -44,11 +58,35 @@ export default function LiveMap({
     dropoffLng,
     driverLat,
     driverLng,
-    className = ''
+    className = '',
+    onCenterChange,
+    interactive = false
 }) {
     const hasPickup = pickupLat && pickupLng;
     const hasDropoff = dropoffLat && dropoffLng;
     const hasDriver = driverLat && driverLng;
+
+    function MapEvents() {
+        const map = useMap();
+        useEffect(() => {
+            if (!onCenterChange || !interactive) return;
+
+            const onMove = () => {
+                const center = map.getCenter();
+                onCenterChange({ lat: center.lat, lng: center.lng });
+            };
+
+            map.on('move', onMove);
+            map.on('moveend', onMove);
+            onMove(); // Initial firing
+
+            return () => {
+                map.off('move', onMove);
+                map.off('moveend', onMove);
+            };
+        }, [map, interactive]);
+        return null;
+    }
 
     // Calculate center and bounds
     const getCenter = () => {
@@ -77,6 +115,7 @@ export default function LiveMap({
                 style={{ minHeight: '300px' }}
             >
                 <MapUpdater center={getCenter()} zoom={getZoom()} />
+                <MapEvents />
 
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -84,14 +123,14 @@ export default function LiveMap({
                 />
 
                 {/* Pickup Marker */}
-                {hasPickup && (
+                {hasPickup && !interactive && (
                     <Marker position={[pickupLat, pickupLng]} icon={pickupIcon}>
                         <Popup>Recogida</Popup>
                     </Marker>
                 )}
 
                 {/* Dropoff Marker */}
-                {hasDropoff && (
+                {hasDropoff && !interactive && (
                     <Marker position={[dropoffLat, dropoffLng]} icon={dropoffIcon}>
                         <Popup>Destino</Popup>
                     </Marker>

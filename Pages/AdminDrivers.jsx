@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/lib/utils';
+import { createPageUrl, formatCurrency } from '@/lib/utils';
 import {
     ArrowLeft, Search, Filter, CheckCircle, XCircle,
     Clock, Star, Car, MoreVertical, Eye
@@ -59,7 +59,7 @@ export default function AdminDrivers() {
 
     const loadDrivers = async () => {
         try {
-            const data = await base44.entities.Driver.list('-created_date');
+            const data = await goApp.entities.Driver.list('-created_date');
             setDrivers(data);
         } catch (error) {
             console.error('Error loading drivers:', error);
@@ -89,7 +89,7 @@ export default function AdminDrivers() {
 
     const updateDriverStatus = async (driverId, newStatus) => {
         try {
-            await base44.entities.Driver.update(driverId, { status: newStatus });
+            await goApp.entities.Driver.update(driverId, { status: newStatus });
             setDrivers(drivers.map(d =>
                 d.id === driverId ? { ...d, status: newStatus } : d
             ));
@@ -350,7 +350,7 @@ export default function AdminDrivers() {
                                 </div>
                                 <div className="bg-[#252538] rounded-xl p-4 text-center">
                                     <p className="text-2xl font-bold text-[#00D4B1]">
-                                        €{(selectedDriver.total_earnings || 0).toFixed(2)}
+                                        {formatCurrency(selectedDriver.total_earnings || 0)}
                                     </p>
                                     <p className="text-gray-400 text-sm">Ganancias</p>
                                 </div>

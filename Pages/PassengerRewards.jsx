@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import { ArrowLeft, Gift, Star, Crown, Zap, Award, ChevronRight } from 'lucide-react';
@@ -27,17 +27,17 @@ export default function PassengerRewards() {
 
     const loadRewardData = async () => {
         try {
-            const user = await base44.auth.me();
-            const passengers = await base44.entities.Passenger.filter({ created_by: user.email });
+            const user = await goApp.auth.me();
+            const passengers = await goApp.entities.Passenger.filter({ created_by: user.email });
 
             if (passengers.length > 0) {
                 setPassenger(passengers[0]);
 
-                const rewards = await base44.entities.GoReward.filter({ passenger_id: passengers[0].id });
+                const rewards = await goApp.entities.GoReward.filter({ passenger_id: passengers[0].id });
                 if (rewards.length > 0) {
                     setReward(rewards[0]);
                 } else {
-                    const newReward = await base44.entities.GoReward.create({
+                    const newReward = await goApp.entities.GoReward.create({
                         passenger_id: passengers[0].id,
                         points_balance: 0,
                         lifetime_points: 0,

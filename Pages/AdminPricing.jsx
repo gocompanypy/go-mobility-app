@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import { ArrowLeft, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
@@ -50,7 +50,7 @@ export default function AdminPricing() {
 
     const loadPriceConfigs = async () => {
         try {
-            const data = await base44.entities.PriceConfig.list();
+            const data = await goApp.entities.PriceConfig.list();
             setPriceConfigs(data);
         } catch (error) {
             console.error('Error loading configs:', error);
@@ -71,12 +71,12 @@ export default function AdminPricing() {
     const saveConfig = async () => {
         try {
             if (editingConfig.id) {
-                await base44.entities.PriceConfig.update(editingConfig.id, editingConfig);
+                await goApp.entities.PriceConfig.update(editingConfig.id, editingConfig);
                 setPriceConfigs(priceConfigs.map(c =>
                     c.id === editingConfig.id ? editingConfig : c
                 ));
             } else {
-                const newConfig = await base44.entities.PriceConfig.create(editingConfig);
+                const newConfig = await goApp.entities.PriceConfig.create(editingConfig);
                 setPriceConfigs([...priceConfigs, newConfig]);
             }
             setIsModalOpen(false);
@@ -90,7 +90,7 @@ export default function AdminPricing() {
         if (!confirm('¿Estás seguro de eliminar esta configuración?')) return;
 
         try {
-            await base44.entities.PriceConfig.delete(id);
+            await goApp.entities.PriceConfig.delete(id);
             setPriceConfigs(priceConfigs.filter(c => c.id !== id));
         } catch (error) {
             console.error('Error deleting config:', error);
@@ -99,7 +99,7 @@ export default function AdminPricing() {
 
     const toggleActive = async (config) => {
         try {
-            await base44.entities.PriceConfig.update(config.id, {
+            await goApp.entities.PriceConfig.update(config.id, {
                 is_active: !config.is_active
             });
             setPriceConfigs(priceConfigs.map(c =>

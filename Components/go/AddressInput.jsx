@@ -40,14 +40,26 @@ export default function AddressInput({
     };
 
     const handleCurrentLocation = () => {
-        // Simulate getting current location
-        const currentLocation = {
-            id: 0,
-            address: 'Tu ubicación actual',
-            lat: 40.4168,
-            lng: -3.7038,
-        };
-        handleSelect(currentLocation);
+        if (!navigator.geolocation) {
+            alert('Geolocalización no soportada por su navegador');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const currentLocation = {
+                    id: 'current-location',
+                    address: 'Tu ubicación actual',
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                };
+                handleSelect(currentLocation);
+            },
+            (error) => {
+                console.error('Error getting location:', error);
+                alert('No pudimos obtener tu ubicación. Por favor verifica tus permisos.');
+            }
+        );
     };
 
     return (
@@ -95,6 +107,23 @@ export default function AddressInput({
                             </div>
                         </button>
                     )}
+
+                    {/* Pin on Map Option */}
+                    <button
+                        onClick={() => {
+                            setIsOpen(false);
+                            onSelect?.({ id: 'map-pin', address: 'Fijar en el mapa' });
+                        }}
+                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#252538] transition-colors border-b border-[#2D2D44]"
+                    >
+                        <div className="w-10 h-10 bg-[#FFD700]/20 rounded-full flex items-center justify-center">
+                            <MapPin size={18} className="text-[#FFD700]" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-white font-medium">Fijar en el mapa</p>
+                            <p className="text-xs text-gray-400">Selecciona la ubicación exacta</p>
+                        </div>
+                    </button>
 
                     {/* Saved Places */}
                     {savedPlaces.length > 0 && (

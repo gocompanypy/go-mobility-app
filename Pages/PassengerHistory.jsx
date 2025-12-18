@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import { ArrowLeft, MapPin, Calendar, Star, Receipt, ChevronRight } from 'lucide-react';
@@ -22,8 +22,8 @@ export default function PassengerHistory() {
 
     const loadTrips = async () => {
         try {
-            const user = await base44.auth.me();
-            const data = await base44.entities.Trip.filter(
+            const user = await goApp.auth.me();
+            const data = await goApp.entities.Trip.filter(
                 { created_by: user.email },
                 '-created_date'
             );

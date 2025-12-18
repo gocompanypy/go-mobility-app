@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, User, Car, FileText, Check, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Car, FileText, Check, Upload, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Logo from '@/components/go/Logo';
 import { theme } from '@/components/go/theme';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const STEPS = [
-    { id: 'personal', title: 'Datos personales', icon: User },
-    { id: 'vehicle', title: 'Vehículo', icon: Car },
-    { id: 'documents', title: 'Documentos', icon: FileText },
+    { id: 'personal', title: 'Datos Personales', icon: User, description: 'Tu información básica' },
+    { id: 'vehicle', title: 'Tu Vehículo', icon: Car, description: 'Detalles del auto' },
+    { id: 'documents', title: 'Documentación', icon: FileText, description: 'Licencia y permisos' },
 ];
 
 export default function DriverRegister() {
@@ -40,6 +41,30 @@ export default function DriverRegister() {
         license_expiry: '',
     });
 
+    useEffect(() => {
+        // Cargar datos previos si existen (del DriverSignup)
+        const savedData = localStorage.getItem('driver_signup');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                // Separar nombre completo
+                const names = (parsed.fullName || '').split(' ');
+                const firstName = names[0] || '';
+                const lastName = names.slice(1).join(' ') || '';
+
+                setFormData(prev => ({
+                    ...prev,
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone: parsed.phone || '',
+                    vehicle_type: parsed.vehicleType || 'economy'
+                }));
+            } catch (e) {
+                console.error("Error loading saved signup data", e);
+            }
+        }
+    }, []);
+
     const updateForm = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -49,7 +74,7 @@ export default function DriverRegister() {
             case 0:
                 return formData.first_name && formData.last_name && formData.phone && /^09\d{8}$/.test(formData.phone);
             case 1:
-                return formData.vehicle_make && formData.vehicle_model && formData.vehicle_plate;
+                return formData.vehicle_make && formData.vehicle_model && formData.vehicle_plate && formData.vehicle_color;
             case 2:
                 return formData.license_number;
             default:
@@ -73,257 +98,318 @@ export default function DriverRegister() {
         setIsSubmitting(true);
 
         try {
-            await base44.entities.Driver.create({
-                ...formData,
-                status: 'pending',
-                is_online: false,
-                is_available: true,
-                rating: 5.0,
-                total_trips: 0,
-                total_ratings: 0,
-                acceptance_rate: 1.0,
-                total_earnings: 0,
+            // Usamos el registro de Auth (que maneja auth + profile DB)
+            await goApp.auth.register(formData.phone, '123456', {
+                role: 'driver',
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                phone: formData.phone,
+                vehicle_type: formData.vehicle_type,
+                vehicle_make: formData.vehicle_make,
+                vehicle_model: formData.vehicle_model,
+                vehicle_year: formData.vehicle_year,
+                vehicle_color: formData.vehicle_color,
+                vehicle_plate: formData.vehicle_plate,
+                // Document data could be handled here or separately
+                license_number: formData.license_number,
+                license_expiry: formData.license_expiry
             });
 
-            navigate(createPageUrl('DriverHome'));
+            // Simulate slight delay for effect
+            setTimeout(() => {
+                // Auto-login or redirect
+                navigate(createPageUrl('DriverHome'));
+            }, 1000);
         } catch (error) {
             console.error('Error registering driver:', error);
+            // Si el usuario ya existe, podríamos mostrar un mensaje específico
+            if (error.message.includes('User already registered') || error.message.includes('duplicate')) {
+                alert('Este número ya está registrado. Por favor inicia sesión.');
+                navigate(createPageUrl('DriverLogin'));
+            } else {
+                alert('Error al registrar: ' + error.message);
+            }
+            setIsSubmitting(false);
         }
-
-        setIsSubmitting(false);
     };
 
     return (
-        <div className="min-h-screen bg-[#0F0F1A] text-white">
+        <div className="min-h-screen bg-black text-white relative overflow-hidden font-sans">
+            {/* Background Effects */}
+            <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-[#FFD700]/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#FFA500]/5 rounded-full blur-[100px] pointer-events-none" />
+
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-[#0F0F1A]/90 backdrop-blur-lg border-b border-[#2D2D44]">
-                <div className="flex items-center gap-4 px-4 py-3">
+            <header className="sticky top-0 z-40 bg-black/50 backdrop-blur-xl border-b border-[#FFD700]/10">
+                <div className="flex items-center justify-between px-6 py-4 max-w-2xl mx-auto w-full">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => currentStep > 0 ? prevStep() : navigate(-1)}
-                        className="text-white"
+                        className="text-white hover:bg-white/10 hover:text-[#FFD700] transition-colors"
                     >
                         <ArrowLeft size={24} />
                     </Button>
-                    <div className="flex-1">
-                        <Logo size="sm" />
+                    <div className="flex flex-col items-center">
+                        <span className="text-sm text-[#FFD700] font-medium tracking-wider uppercase">Registro</span>
+                        <div className="flex gap-1 mt-1">
+                            {STEPS.map((_, i) => (
+                                <div
+                                    key={i}
+                                    className={`h-1 rounded-full transition-all duration-300 ${i === currentStep ? 'w-6 bg-[#FFD700]' :
+                                        i < currentStep ? 'w-2 bg-[#FFD700]/50' : 'w-2 bg-white/10'
+                                        }`}
+                                />
+                            ))}
+                        </div>
                     </div>
+                    <div className="w-10" /> {/* Spacer for centering */}
                 </div>
             </header>
 
-            {/* Progress Steps */}
-            <div className="px-4 py-6">
-                <div className="flex items-center justify-between mb-8">
-                    {STEPS.map((step, index) => {
-                        const Icon = step.icon;
-                        const isActive = index === currentStep;
-                        const isComplete = index < currentStep;
+            <main className="max-w-xl mx-auto px-6 py-8 pb-32 relative z-10">
 
-                        return (
-                            <div key={step.id} className="flex flex-col items-center flex-1">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${isComplete ? 'bg-[#00D4B1] text-black' :
-                                    isActive ? 'bg-[#00D4B1]/20 text-[#00D4B1] border-2 border-[#00D4B1]' :
-                                        'bg-[#252538] text-gray-400'
-                                    }`}>
-                                    {isComplete ? <Check size={20} /> : <Icon size={20} />}
-                                </div>
-                                <span className={`text-xs text-center ${isActive ? 'text-[#00D4B1]' : 'text-gray-400'}`}>
-                                    {step.title}
-                                </span>
-                                {index < STEPS.length - 1 && (
-                                    <div className={`absolute top-6 left-1/2 w-full h-0.5 ${isComplete ? 'bg-[#00D4B1]' : 'bg-[#252538]'
-                                        }`} style={{ transform: 'translateX(50%)' }} />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
+                {/* Step Header */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    key={currentStep}
+                    className="text-center mb-10"
+                >
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/5 rounded-2xl border border-[#FFD700]/20 flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_-5px_rgba(255,215,0,0.15)]">
+                        {React.createElement(STEPS[currentStep].icon, { size: 30, className: "text-[#FFD700]" })}
+                    </div>
+                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400 mb-2">
+                        {STEPS[currentStep].title}
+                    </h1>
+                    <p className="text-gray-400">
+                        {STEPS[currentStep].description}
+                    </p>
+                </motion.div>
 
-                <h1 className="text-2xl font-bold mb-6">{STEPS[currentStep].title}</h1>
-
-                {/* Step Content */}
-                <div className="space-y-6">
-                    {/* Personal Info */}
-                    {currentStep === 0 && (
-                        <>
-                            <div className="space-y-2">
-                                <Label>Nombre</Label>
-                                <Input
-                                    value={formData.first_name}
-                                    onChange={(e) => updateForm('first_name', e.target.value)}
-                                    placeholder="Tu nombre"
-                                    className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Apellidos</Label>
-                                <Input
-                                    value={formData.last_name}
-                                    onChange={(e) => updateForm('last_name', e.target.value)}
-                                    placeholder="Tus apellidos"
-                                    className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Teléfono</Label>
-                                <Input
-                                    placeholder="0981 123 456"
-                                    className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                    maxLength={10}
-                                    value={formData.phone}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '');
-                                        if (val.length <= 10) {
-                                            updateForm('phone', val);
-                                        }
-                                    }}
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    {/* Vehicle Info */}
-                    {currentStep === 1 && (
-                        <>
-                            <div className="space-y-2">
-                                <Label>Tipo de servicio</Label>
-                                <Select
-                                    value={formData.vehicle_type}
-                                    onValueChange={(value) => updateForm('vehicle_type', value)}
-                                >
-                                    <SelectTrigger className="bg-[#252538] border-[#2D2D44] text-white py-6">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-[#1A1A2E] border-[#2D2D44]">
-                                        {Object.entries(theme.vehicleTypes).map(([key, config]) => (
-                                            <SelectItem key={key} value={key} className="text-white">
-                                                <span className="flex items-center gap-2">
-                                                    <span>{config.icon}</span>
-                                                    <span>{config.name}</span>
-                                                </span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Marca</Label>
-                                    <Input
-                                        value={formData.vehicle_make}
-                                        onChange={(e) => updateForm('vehicle_make', e.target.value)}
-                                        placeholder="Toyota"
-                                        className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                    />
+                {/* Form Content */}
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={currentStep}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-6"
+                    >
+                        {/* Personal Info */}
+                        {currentStep === 0 && (
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-gray-400 ml-1">Nombre</Label>
+                                        <Input
+                                            value={formData.first_name}
+                                            onChange={(e) => updateForm('first_name', e.target.value)}
+                                            placeholder="Juan"
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-gray-400 ml-1">Apellido</Label>
+                                        <Input
+                                            value={formData.last_name}
+                                            onChange={(e) => updateForm('last_name', e.target.value)}
+                                            placeholder="Pérez"
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Modelo</Label>
-                                    <Input
-                                        value={formData.vehicle_model}
-                                        onChange={(e) => updateForm('vehicle_model', e.target.value)}
-                                        placeholder="Corolla"
-                                        className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                    />
+                                    <Label className="text-gray-400 ml-1">Teléfono móvil</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🇵🇾</span>
+                                        <Input
+                                            placeholder="0981 123 456"
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl pl-12 focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg tracking-wide"
+                                            maxLength={10}
+                                            value={formData.phone}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '');
+                                                if (val.length <= 10) updateForm('phone', val);
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 ml-1">Te enviaremos un código de verificación.</p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                        )}
+
+                        {/* Vehicle Info */}
+                        {currentStep === 1 && (
+                            <div className="space-y-5">
                                 <div className="space-y-2">
-                                    <Label>Año</Label>
-                                    <Input
-                                        type="number"
-                                        value={formData.vehicle_year}
-                                        onChange={(e) => updateForm('vehicle_year', parseInt(e.target.value))}
-                                        className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                    />
+                                    <Label className="text-gray-400 ml-1">Tipo de Servicio</Label>
+                                    <Select
+                                        value={formData.vehicle_type}
+                                        onValueChange={(value) => updateForm('vehicle_type', value)}
+                                    >
+                                        <SelectTrigger className="bg-white/5 border-white/10 text-white h-14 rounded-xl focus:ring-[#FFD700]/20">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-[#1A1A1A] border-[#FFD700]/20 text-white">
+                                            {Object.entries(theme.vehicleTypes).map(([key, config]) => (
+                                                <SelectItem key={key} value={key} className="focus:bg-[#FFD700]/20 focus:text-[#FFD700]">
+                                                    <span className="flex items-center gap-3">
+                                                        <span className="text-lg">{config.icon}</span>
+                                                        <span className="font-medium">{config.name}</span>
+                                                    </span>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-gray-400 ml-1">Marca</Label>
+                                        <Input
+                                            value={formData.vehicle_make}
+                                            onChange={(e) => updateForm('vehicle_make', e.target.value)}
+                                            placeholder="Toyota"
+                                            className="bg-white/5 border-white/10 text-white h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-gray-400 ml-1">Modelo</Label>
+                                        <Input
+                                            value={formData.vehicle_model}
+                                            onChange={(e) => updateForm('vehicle_model', e.target.value)}
+                                            placeholder="Vitz / Corolla"
+                                            className="bg-white/5 border-white/10 text-white h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-gray-400 ml-1">Año</Label>
+                                        <Input
+                                            type="number"
+                                            value={formData.vehicle_year}
+                                            onChange={(e) => updateForm('vehicle_year', parseInt(e.target.value) || '')}
+                                            className="bg-white/5 border-white/10 text-white h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-gray-400 ml-1">Color</Label>
+                                        <Input
+                                            value={formData.vehicle_color}
+                                            onChange={(e) => updateForm('vehicle_color', e.target.value)}
+                                            placeholder="Gris"
+                                            className="bg-white/5 border-white/10 text-white h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
-                                    <Label>Color</Label>
-                                    <Input
-                                        value={formData.vehicle_color}
-                                        onChange={(e) => updateForm('vehicle_color', e.target.value)}
-                                        placeholder="Negro"
-                                        className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                    />
+                                    <Label className="text-gray-400 ml-1">Número de Chapa (Matrícula)</Label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 p-1.5 bg-white/10 rounded text-[10px] font-bold tracking-widest text-white/70 border border-white/20">PY</div>
+                                        <Input
+                                            value={formData.vehicle_plate}
+                                            onChange={(e) => updateForm('vehicle_plate', e.target.value.toUpperCase())}
+                                            placeholder="ABCD 123"
+                                            className="bg-white/5 border-white/10 text-white h-14 rounded-xl pl-16 uppercase font-mono tracking-wider focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Matrícula</Label>
-                                <Input
-                                    value={formData.vehicle_plate}
-                                    onChange={(e) => updateForm('vehicle_plate', e.target.value.toUpperCase())}
-                                    placeholder="1234 ABC"
-                                    className="bg-[#252538] border-[#2D2D44] text-white py-6 uppercase"
-                                />
-                            </div>
-                        </>
-                    )}
+                        )}
 
-                    {/* Documents */}
-                    {currentStep === 2 && (
-                        <>
-                            <div className="space-y-2">
-                                <Label>Número de licencia de conducir</Label>
-                                <Input
-                                    value={formData.license_number}
-                                    onChange={(e) => updateForm('license_number', e.target.value)}
-                                    placeholder="12345678A"
-                                    className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Fecha de vencimiento</Label>
-                                <Input
-                                    type="date"
-                                    value={formData.license_expiry}
-                                    onChange={(e) => updateForm('license_expiry', e.target.value)}
-                                    className="bg-[#252538] border-[#2D2D44] text-white py-6"
-                                />
-                            </div>
+                        {/* Documents */}
+                        {currentStep === 2 && (
+                            <div className="space-y-6">
+                                <div className="space-y-4">
+                                    <div className="p-4 rounded-xl bg-[#FFD700]/5 border border-[#FFD700]/20 flex gap-4 items-start">
+                                        <div className="p-2 rounded-full bg-[#FFD700]/10 text-[#FFD700]">
+                                            <ShieldCheck size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-[#FFD700] font-medium mb-1">Verificación de Seguridad</h3>
+                                            <p className="text-sm text-gray-400 leading-relaxed">
+                                                Para activar tu cuenta, necesitamos validar tu identidad y documentación legal. Todos los datos están encriptados. 🔒
+                                            </p>
+                                        </div>
+                                    </div>
 
-                            <div className="bg-[#252538] rounded-xl p-6 border border-dashed border-[#2D2D44]">
-                                <div className="text-center">
-                                    <Upload size={32} className="mx-auto text-gray-400 mb-3" />
-                                    <p className="text-gray-400 mb-2">Sube fotos de tus documentos</p>
-                                    <p className="text-xs text-gray-500">
-                                        DNI, Licencia de conducir, Seguro del vehículo
-                                    </p>
-                                    <Button variant="outline" className="mt-4 border-[#00D4B1] text-[#00D4B1]">
-                                        Seleccionar archivos
-                                    </Button>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-gray-400 ml-1">Nro. Licencia de Conducir</Label>
+                                            <Input
+                                                value={formData.license_number}
+                                                onChange={(e) => updateForm('license_number', e.target.value)}
+                                                className="bg-white/5 border-white/10 text-white h-14 rounded-xl focus:border-[#FFD700]/50"
+                                                placeholder="Ej. 1234567"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-gray-400 ml-1">Vencimiento Licencia</Label>
+                                            <Input
+                                                type="date"
+                                                value={formData.license_expiry}
+                                                onChange={(e) => updateForm('license_expiry', e.target.value)}
+                                                className="bg-white/5 border-white/10 text-white h-14 rounded-xl focus:border-[#FFD700]/50"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <Label className="text-gray-400 ml-1 mb-2 block">Foto de la Licencia (Frente y Dorso)</Label>
+                                        <div
+                                            className="border-2 border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center bg-white/5 hover:bg-white/[0.07] hover:border-[#FFD700]/30 transition-all cursor-pointer group"
+                                        >
+                                            <div className="w-16 h-16 rounded-full bg-black flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                                <Upload size={24} className="text-[#FFD700]" />
+                                            </div>
+                                            <span className="text-white font-medium mb-1">Toca para subir foto</span>
+                                            <span className="text-xs text-gray-500">JPG, PNG o PDF (Max 5MB)</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div className="bg-[#00D4B1]/10 rounded-xl p-4 border border-[#00D4B1]/20">
-                                <p className="text-[#00D4B1] text-sm">
-                                    📋 Tus documentos serán revisados en 24-48 horas. Te notificaremos cuando tu cuenta esté activa.
-                                </p>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+            </main>
 
             {/* Footer Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#0F0F1A] border-t border-[#2D2D44]">
-                {currentStep < STEPS.length - 1 ? (
-                    <Button
-                        onClick={nextStep}
-                        disabled={!isStepValid()}
-                        className="w-full py-6 bg-[#00D4B1] hover:bg-[#00B89C] text-black font-semibold text-lg disabled:opacity-50"
-                    >
-                        Continuar
-                        <ArrowRight size={20} className="ml-2" />
-                    </Button>
-                ) : (
-                    <Button
-                        onClick={submitRegistration}
-                        disabled={!isStepValid() || isSubmitting}
-                        className="w-full py-6 bg-[#00D4B1] hover:bg-[#00B89C] text-black font-semibold text-lg disabled:opacity-50"
-                    >
-                        {isSubmitting ? 'Enviando...' : 'Completar registro'}
-                    </Button>
-                )}
+            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent z-50">
+                <div className="max-w-xl mx-auto">
+                    {currentStep < STEPS.length - 1 ? (
+                        <Button
+                            onClick={nextStep}
+                            disabled={!isStepValid()}
+                            className="w-full h-14 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_-5px_#FFD700] hover:shadow-[0_0_30px_-5px_#FFD700] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none"
+                        >
+                            <span className="flex items-center gap-2">
+                                Continuar <ArrowRight size={20} />
+                            </span>
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={submitRegistration}
+                            disabled={!isStepValid() || isSubmitting}
+                            className="w-full h-14 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_-5px_#FFD700] hover:shadow-[0_0_30px_-5px_#FFD700] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none relative overflow-hidden"
+                        >
+                            {isSubmitting ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                    <span>Creando cuenta...</span>
+                                </div>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    <Sparkles size={20} /> Finalizar Registro
+                                </span>
+                            )}
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
     );

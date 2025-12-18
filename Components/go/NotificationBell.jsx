@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { Bell, X, Gift, Car, DollarSign, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -22,7 +22,7 @@ export default function NotificationBell({ userId, userType }) {
 
     const loadNotifications = async () => {
         try {
-            const data = await base44.entities.Notification.filter(
+            const data = await goApp.entities.Notification.filter(
                 { user_id: userId, user_type: userType },
                 '-created_date',
                 20
@@ -36,7 +36,7 @@ export default function NotificationBell({ userId, userType }) {
 
     const markAsRead = async (notificationId) => {
         try {
-            await base44.entities.Notification.update(notificationId, { is_read: true });
+            await goApp.entities.Notification.update(notificationId, { is_read: true });
             loadNotifications();
         } catch (error) {
             console.error('Error marking as read:', error);
@@ -47,7 +47,7 @@ export default function NotificationBell({ userId, userType }) {
         try {
             const unread = notifications.filter(n => !n.is_read);
             await Promise.all(
-                unread.map(n => base44.entities.Notification.update(n.id, { is_read: true }))
+                unread.map(n => goApp.entities.Notification.update(n.id, { is_read: true }))
             );
             loadNotifications();
         } catch (error) {

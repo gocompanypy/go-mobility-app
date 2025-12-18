@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import {
@@ -42,9 +42,9 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     try {
       const [trips, drivers, passengers] = await Promise.all([
-        base44.entities.Trip.list('-created_date', 100),
-        base44.entities.Driver.list(),
-        base44.entities.Passenger.list(),
+        goApp.entities.Trip.list('-created_date', 100),
+        goApp.entities.Driver.list(),
+        goApp.entities.Passenger.list(),
       ]);
 
       // Calculate stats
@@ -206,8 +206,16 @@ export default function AdminDashboard() {
               onClick={() => navigate(createPageUrl('AdminDrivers'))}
               className="text-gray-400 hover:text-white"
             >
-              <Users size={18} className="mr-2" />
+              <Car size={18} className="mr-2" />
               Conductores
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => navigate(createPageUrl('AdminPassengers'))}
+              className="text-gray-400 hover:text-white"
+            >
+              <Users size={18} className="mr-2" />
+              Pasajeros
             </Button>
             <Button
               variant={activeView === 'analytics' ? 'default' : 'ghost'}

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { ArrowLeft, TrendingUp, Calendar, DollarSign, Car } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Calendar, DollarSign, Car, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import Logo from '@/components/go/Logo';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 export default function DriverEarnings() {
     const navigate = useNavigate();
@@ -30,13 +29,13 @@ export default function DriverEarnings() {
 
     const loadData = async () => {
         try {
-            const user = await base44.auth.me();
-            const drivers = await base44.entities.Driver.filter({ created_by: user.email });
+            const user = await goApp.auth.me();
+            const drivers = await goApp.entities.Driver.filter({ created_by: user.email });
 
             if (drivers.length > 0) {
                 setDriver(drivers[0]);
 
-                const tripData = await base44.entities.Trip.filter({
+                const tripData = await goApp.entities.Trip.filter({
                     driver_id: drivers[0].id,
                     status: 'completed'
                 });
@@ -97,116 +96,157 @@ export default function DriverEarnings() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0F0F1A] text-white">
+        <div className="min-h-screen bg-black text-white relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute top-0 left-0 w-full h-full pointer-events-none fixed">
+                <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#FFD700]/10 rounded-full blur-[120px]" />
+                <div className="absolute top-[20%] left-[-10%] w-[400px] h-[400px] bg-[#FFA500]/5 rounded-full blur-[100px]" />
+            </div>
+
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-[#0F0F1A]/90 backdrop-blur-lg border-b border-[#2D2D44]">
-                <div className="flex items-center gap-4 px-4 py-3">
-                    <Button
-                        variant="ghost"
-                        size="icon"
+            <header className="sticky top-0 z-40 bg-black/60 backdrop-blur-xl border-b border-white/10">
+                <div className="flex items-center gap-4 px-4 py-4">
+                    <button
                         onClick={() => navigate(createPageUrl('DriverHome'))}
-                        className="text-white"
+                        className="p-2 rounded-full hover:bg-white/10 transition-colors"
                     >
-                        <ArrowLeft size={24} />
-                    </Button>
-                    <h1 className="text-xl font-bold">Mis ganancias</h1>
+                        <ArrowLeft size={24} className="text-gray-200" />
+                    </button>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Mis Ganancias</h1>
                 </div>
             </header>
 
-            <div className="px-4 py-6">
+            <div className="px-5 py-6 relative z-10 max-w-2xl mx-auto">
                 {/* Period Selector */}
-                <Tabs value={period} onValueChange={setPeriod} className="mb-6">
-                    <TabsList className="bg-[#1A1A2E] w-full">
-                        <TabsTrigger value="week" className="flex-1 data-[state=active]:bg-[#00D4B1] data-[state=active]:text-black">
+                <Tabs value={period} onValueChange={setPeriod} className="mb-8">
+                    <TabsList className="bg-white/5 border border-white/10 w-full p-1 rounded-xl h-12">
+                        <TabsTrigger
+                            value="week"
+                            className="flex-1 rounded-lg data-[state=active]:bg-[#FFD700] data-[state=active]:text-black data-[state=active]:font-bold transition-all duration-300"
+                        >
                             Esta semana
                         </TabsTrigger>
-                        <TabsTrigger value="month" className="flex-1 data-[state=active]:bg-[#00D4B1] data-[state=active]:text-black">
+                        <TabsTrigger
+                            value="month"
+                            className="flex-1 rounded-lg data-[state=active]:bg-[#FFD700] data-[state=active]:text-black data-[state=active]:font-bold transition-all duration-300"
+                        >
                             Este mes
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
 
                 {/* Main Stats Card */}
-                <div className="bg-gradient-to-br from-[#00D4B1] to-[#00B89C] rounded-2xl p-6 mb-6">
-                    <p className="text-black/70 mb-1">Ganancias totales</p>
-                    <p className="text-4xl font-bold text-black mb-4">
-                        Gs. {stats.total.toLocaleString('es-PY')}
-                    </p>
-                    <div className="flex gap-6">
-                        <div>
-                            <p className="text-black/70 text-sm">Viajes</p>
-                            <p className="text-xl font-semibold text-black">{stats.trips}</p>
-                        </div>
-                        <div>
-                            <p className="text-black/70 text-sm">Promedio/viaje</p>
-                            <p className="text-xl font-semibold text-black">Gs. {stats.avgPerTrip.toLocaleString('es-PY')}</p>
+                <div className="rounded-3xl p-6 mb-8 relative overflow-hidden group">
+                    {/* Gradient Background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700] to-[#FFA500] opacity-100 transition-all duration-500" />
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay" />
+
+                    {/* Shine Effect */}
+                    <div className="absolute -inset-full top-0 block h-full w-1/2 -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
+
+                    <div className="relative z-10">
+                        <p className="text-black/70 font-medium mb-1 flex items-center gap-2">
+                            <DollarSign size={16} className="text-black" />
+                            Ganancias totales
+                        </p>
+                        <p className="text-4xl font-black text-black mb-6 tracking-tight">
+                            Gs. {stats.total.toLocaleString('es-PY')}
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-4 border-t border-black/10 pt-4">
+                            <div>
+                                <p className="text-black/60 text-xs uppercase tracking-wider font-bold">Viajes</p>
+                                <p className="text-2xl font-bold text-black">{stats.trips}</p>
+                            </div>
+                            <div>
+                                <p className="text-black/60 text-xs uppercase tracking-wider font-bold">Promedio / Viaje</p>
+                                <p className="text-2xl font-bold text-black">Gs. {Math.round(stats.avgPerTrip).toLocaleString('es-PY')}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Chart */}
-                <div className="bg-[#1A1A2E] rounded-xl p-4 border border-[#2D2D44] mb-6">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                        <TrendingUp size={18} className="text-[#00D4B1]" />
-                        Ganancias por día
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 mb-6 shadow-xl">
+                    <h3 className="font-bold mb-6 flex items-center gap-2 text-white">
+                        <TrendingUp size={20} className="text-[#FFD700]" />
+                        Tendencia
                     </h3>
-                    <div className="h-48">
+                    <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                                 <XAxis
                                     dataKey="day"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#6B6B80', fontSize: 12 }}
+                                    tick={{ fill: '#888', fontSize: 12, fontWeight: 500 }}
+                                    dy={10}
                                 />
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#6B6B80', fontSize: 12 }}
-                                    tickFormatter={(value) => `Gs. ${value.toLocaleString('es-PY')}`}
+                                    tick={{ fill: '#888', fontSize: 11 }}
+                                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                                 />
                                 <Tooltip
+                                    cursor={{ fill: 'rgba(255, 215, 0, 0.05)' }}
                                     contentStyle={{
-                                        backgroundColor: '#252538',
-                                        border: '1px solid #2D2D44',
-                                        borderRadius: '8px',
-                                        color: '#fff'
+                                        backgroundColor: '#1A1A1A',
+                                        border: '1px solid rgba(255, 215, 0, 0.2)',
+                                        borderRadius: '12px',
+                                        color: '#fff',
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
                                     }}
-                                    formatter={(value) => [`Gs. ${value.toLocaleString('es-PY')}`, 'Ganancias']}
+                                    itemStyle={{ color: '#FFD700' }}
+                                    formatter={(value) => [`Gs. ${value.toLocaleString('es-PY')}`, '']}
+                                    labelStyle={{ color: '#888', marginBottom: '0.5rem' }}
                                 />
                                 <Bar
                                     dataKey="earnings"
-                                    fill="#00D4B1"
-                                    radius={[4, 4, 0, 0]}
-                                />
+                                    fill="url(#colorGold)"
+                                    radius={[6, 6, 6, 6]}
+                                    maxBarSize={50}
+                                >
+                                    <defs>
+                                        <linearGradient id="colorGold" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#FFD700" stopOpacity={1} />
+                                            <stop offset="100%" stopColor="#FFA500" stopOpacity={1} />
+                                        </linearGradient>
+                                    </defs>
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-[#1A1A2E] rounded-xl p-4 border border-[#2D2D44]">
-                        <div className="flex items-center gap-2 text-gray-400 mb-2">
-                            <Car size={16} />
-                            <span className="text-sm">Total histórico</span>
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
+                        <div className="flex items-center gap-2 text-[#FFD700] mb-2">
+                            <div className="p-2 bg-[#FFD700]/10 rounded-lg">
+                                <DollarSign size={18} />
+                            </div>
                         </div>
-                        <p className="text-xl font-bold">Gs. {(driver?.total_earnings || 0).toLocaleString('es-PY')}</p>
+                        <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Total Histórico</p>
+                        <p className="text-xl font-bold text-white">Gs. {(driver?.total_earnings || 0).toLocaleString('es-PY')}</p>
                     </div>
-                    <div className="bg-[#1A1A2E] rounded-xl p-4 border border-[#2D2D44]">
-                        <div className="flex items-center gap-2 text-gray-400 mb-2">
-                            <Calendar size={16} />
-                            <span className="text-sm">Viajes totales</span>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
+                        <div className="flex items-center gap-2 text-[#FFA500] mb-2">
+                            <div className="p-2 bg-[#FFA500]/10 rounded-lg">
+                                <Car size={18} />
+                            </div>
                         </div>
-                        <p className="text-xl font-bold">{driver?.total_trips || 0}</p>
+                        <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Viajes Totales</p>
+                        <p className="text-xl font-bold text-white">{driver?.total_trips || 0}</p>
                     </div>
                 </div>
 
                 {/* Info Card */}
-                <div className="mt-6 bg-[#252538] rounded-xl p-4 border border-[#2D2D44]">
-                    <p className="text-sm text-gray-400">
-                        💡 Las ganancias mostradas son después de la comisión de GO (20%).
-                        Los pagos se procesan semanalmente los lunes.
+                <div className="bg-[#FFD700]/5 border border-[#FFD700]/20 rounded-2xl p-4 flex gap-3 items-start">
+                    <Info size={20} className="text-[#FFD700] shrink-0 mt-0.5" />
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                        <span className="text-[#FFD700] font-semibold">Nota:</span> Las ganancias mostradas ya tienen descontada la tasa de servicio de GO (20%). Los pagos se transfieren automáticamente cada lunes.
                     </p>
                 </div>
             </div>

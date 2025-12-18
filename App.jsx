@@ -16,6 +16,8 @@ import PassengerWelcome from './Pages/PassengerWelcome';
 import PassengerHistory from './Pages/PassengerHistory';
 import PassengerPromotions from './Pages/PassengerPromotions';
 import PassengerRewards from './Pages/PassengerRewards';
+import PassengerPayments from './Pages/PassengerPayments';
+import PassengerProfile from './Pages/PassengerProfile';
 
 // Driver Pages
 import DriverWelcome from './Pages/DriverWelcome';
@@ -30,6 +32,7 @@ import DriverEarnings from './Pages/DriverEarnings';
 // Admin Pages
 import AdminDashboard from './Pages/AdminDashboard';
 import AdminDrivers from './Pages/AdminDrivers';
+import AdminPassengers from './Pages/AdminPassengers';
 import AdminTrips from './Pages/AdminTrips';
 import AdminPricing from './Pages/AdminPricing';
 
@@ -57,26 +60,32 @@ export default function App() {
                 <Route path="/driver/documents" element={<DriverDocuments />} />
                 <Route path="/driver/success" element={<DriverSuccess />} />
 
+                {/* Passenger Routes (Standalone Layout) */}
+                <Route path="/passenger/home" element={<PassengerHome />} />
+                <Route path="/passenger/history" element={<PassengerHistory />} />
+                <Route path="/passenger/promotions" element={<PassengerPromotions />} />
+                <Route path="/passenger/rewards" element={<PassengerRewards />} />
+                <Route path="/passenger/payments" element={<PassengerPayments />} />
+                <Route path="/passenger/profile" element={<PassengerProfile />} />
+
                 {/* Error Pages */}
                 <Route path="/error/access-restricted" element={<UserNotRegisteredError />} />
 
-                {/* Protected Routes with Layout */}
+                {/* Driver Routes (Standalone Layout) */}
+                <Route path="/driver/home" element={<DriverHome />} />
+                <Route path="/driver/earnings" element={<DriverEarnings />} />
+                <Route path="/driver/history" element={<DriverEarnings />} /> {/* Fallback if page doesn't exist yet */}
+
+                {/* Admin Routes (Standalone Layout) */}
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/drivers" element={<AdminDrivers />} />
+                <Route path="/admin/passengers" element={<AdminPassengers />} />
+                <Route path="/admin/trips" element={<AdminTrips />} />
+                <Route path="/admin/pricing" element={<AdminPricing />} />
+
+                {/* Protected Routes with Layout (Empty for now, but kept for future use) */}
                 <Route element={<Layout />}>
-                    {/* Passenger Routes */}
-                    <Route path="/passenger/home" element={<PassengerHome />} />
-                    <Route path="/passenger/history" element={<PassengerHistory />} />
-                    <Route path="/passenger/promotions" element={<PassengerPromotions />} />
-                    <Route path="/passenger/rewards" element={<PassengerRewards />} />
-
-                    {/* Driver Routes */}
-                    <Route path="/driver/home" element={<DriverHome />} />
-                    <Route path="/driver/earnings" element={<DriverEarnings />} />
-
-                    {/* Admin Routes */}
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                    <Route path="/admin/drivers" element={<AdminDrivers />} />
-                    <Route path="/admin/trips" element={<AdminTrips />} />
-                    <Route path="/admin/pricing" element={<AdminPricing />} />
+                    {/* Common protected routes can go here */}
                 </Route>
 
                 {/* Catch all - Redirect to Home */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import { ArrowLeft, Search, Filter, Shield, Clock, MapPin, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
@@ -29,7 +29,7 @@ export default function AdminTrips() {
 
     const loadTrips = async () => {
         try {
-            const data = await base44.entities.Trip.list('-created_date');
+            const data = await goApp.entities.Trip.list('-created_date');
             setTrips(data);
         } catch (error) {
             console.error('Error loading trips:', error);

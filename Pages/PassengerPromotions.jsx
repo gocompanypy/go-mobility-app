@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import { ArrowLeft, Ticket, Copy, Check, Tag } from 'lucide-react';
@@ -22,7 +22,7 @@ export default function PassengerPromotions() {
 
     const loadPromotions = async () => {
         try {
-            const data = await base44.entities.ActivePromotion.filter({ is_active: true });
+            const data = await goApp.entities.ActivePromotion.filter({ is_active: true });
             setPromotions(data);
         } catch (error) {
             console.error('Error loading promotions:', error);

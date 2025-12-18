@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Star, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 
 export default function ReviewModal({ open, onClose, trip, userType }) {
     const [rating, setRating] = useState(0);
@@ -33,21 +33,21 @@ export default function ReviewModal({ open, onClose, trip, userType }) {
                     driver_tags: quickReviews
                 };
 
-            await base44.entities.Trip.update(trip.id, updateData);
+            await goApp.entities.Trip.update(trip.id, updateData);
 
             // Update driver/passenger rating
             const targetId = userType === 'passenger' ? trip.driver_id : trip.passenger_id;
             const targetEntity = userType === 'passenger' ? 'Driver' : 'Passenger';
 
             if (targetId) {
-                const records = await base44.entities[targetEntity].filter({ id: targetId });
+                const records = await goApp.entities[targetEntity].filter({ id: targetId });
                 if (records.length > 0) {
                     const target = records[0];
                     const totalRatings = (target.total_ratings || 0) + 1;
                     const currentTotal = (target.rating || 5) * (target.total_ratings || 0);
                     const newRating = (currentTotal + rating) / totalRatings;
 
-                    await base44.entities[targetEntity].update(targetId, {
+                    await goApp.entities[targetEntity].update(targetId, {
                         rating: newRating,
                         total_ratings: totalRatings
                     });
@@ -120,8 +120,8 @@ export default function ReviewModal({ open, onClose, trip, userType }) {
                                                 key={option}
                                                 onClick={() => toggleQuickReview(option)}
                                                 className={`px-4 py-2 rounded-full border-2 transition-all ${isSelected
-                                                        ? 'border-[#FFD700] bg-[#FFD700]/10 text-[#FFD700]'
-                                                        : 'border-[#FFD700]/20 text-gray-400 hover:border-[#FFD700]/40'
+                                                    ? 'border-[#FFD700] bg-[#FFD700]/10 text-[#FFD700]'
+                                                    : 'border-[#FFD700]/20 text-gray-400 hover:border-[#FFD700]/40'
                                                     }`}
                                             >
                                                 {isSelected ? <ThumbsUp size={14} className="inline mr-2" /> : null}

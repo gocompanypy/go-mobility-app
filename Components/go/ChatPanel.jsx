@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { base44 } from '@/api/base44Client';
+import { goApp } from '@/api/goAppClient';
 import { format } from 'date-fns';
 
 export default function ChatPanel({
@@ -32,7 +32,7 @@ export default function ChatPanel({
 
     const loadMessages = async () => {
         try {
-            const data = await base44.entities.ChatMessage.filter(
+            const data = await goApp.entities.ChatMessage.filter(
                 { trip_id: tripId },
                 'created_date'
             );
@@ -47,7 +47,7 @@ export default function ChatPanel({
 
         setIsLoading(true);
         try {
-            await base44.entities.ChatMessage.create({
+            await goApp.entities.ChatMessage.create({
                 trip_id: tripId,
                 sender_type: currentUserType,
                 sender_id: currentUserId,
@@ -104,8 +104,8 @@ export default function ChatPanel({
                                 >
                                     <div
                                         className={`max-w-[80%] rounded-2xl px-4 py-2 ${isOwn
-                                                ? 'bg-[#00D4B1] text-black rounded-br-sm'
-                                                : 'bg-[#252538] text-white rounded-bl-sm'
+                                            ? 'bg-[#00D4B1] text-black rounded-br-sm'
+                                            : 'bg-[#252538] text-white rounded-bl-sm'
                                             }`}
                                     >
                                         {!isOwn && (
