@@ -12,8 +12,8 @@ export const theme = {
         comfort: { label: 'Comfort', name: 'Comfort', icon: '🚙' },
         xl: { label: 'XL', name: 'XL', icon: '🚐' },
         women: { label: 'Mujer', name: 'Mujer', icon: '👩' },
-        moto: { label: 'Moto', name: 'Bolt Moto', icon: '🏍️' },
+        moto: { label: 'Moto', name: 'Go Moto', icon: '🏍️' },
         premium: { label: 'Premium', name: 'Premium', icon: '👑' },
-        standard: { label: 'Standard', name: 'Bolt', icon: '🚗' }
+        standard: { label: 'Standard', name: 'Go', icon: '🚗' }
     }
 };

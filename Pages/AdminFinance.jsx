@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import {
     ArrowLeft, Wallet, TrendingUp, AlertCircle, Download, CreditCard,
-    DollarSign, CheckCircle, Settings, Map, Zap, Edit2, Save
+    DollarSign, CheckCircle, Settings, Map, Zap, Edit2, Save, Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,6 +21,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge'; // Assuming Badge exists or will fallback to generic if not, but typically shadcn has it. If not I will remove or use div.
 // Note: Badge was used in the previous file content (line 251), so it exists.
+
+import { theme } from '@/components/go/theme';
 
 export default function AdminFinance() {
     const navigate = useNavigate();
@@ -51,24 +53,44 @@ export default function AdminFinance() {
     const loadFinanceData = async () => {
         setIsLoading(true);
         try {
-            // Parallel data fetching
-            const [statsData, debtorsData, payoutsData, tariffData, zoneData] = await Promise.all([
-                goApp.Wallet.getStats(),
-                goApp.Wallet.listDebtors(),
-                goApp.Wallet.listPayouts(),
+            // Load independently so one failure doesn't block others
+            const [statsResult, debtorsResult, payoutsResult, tariffResult, zoneResult] = await Promise.allSettled([
+                goApp.entities.Wallet.getStats(),
+                goApp.entities.Wallet.listDebtors(),
+                goApp.entities.Wallet.listPayouts(),
                 goApp.entities.PriceConfig.list(),
                 goApp.entities.Zone.list()
             ]);
 
-            setStats(statsData);
-            setDebtors(debtorsData);
-            setPayouts(payoutsData);
-            setPriceConfigs(tariffData);
-            setZones(zoneData);
+            if (statsResult.status === 'fulfilled') setStats(statsResult.value);
+            if (debtorsResult.status === 'fulfilled') setDebtors(debtorsResult.value);
+            if (payoutsResult.status === 'fulfilled') setPayouts(payoutsResult.value);
+
+            if (tariffResult.status === 'fulfilled') {
+                console.log("Tariffs loaded:", tariffResult.value);
+                setPriceConfigs(tariffResult.value || []);
+            } else {
+                console.error("Error loading prices:", tariffResult.reason);
+            }
+
+            if (zoneResult.status === 'fulfilled') setZones(zoneResult.value);
+
         } catch (error) {
-            console.error("Error loading finance data:", error);
+            console.error("CRITICAL Error loading finance data:", error);
         }
         setIsLoading(false);
+    };
+
+    const openCreateTariffModal = () => {
+        setEditingTariff({
+            vehicle_type: 'economy',
+            display_name: 'Nueva Tarifa',
+            base_fare: 5000,
+            price_per_km: 3000,
+            price_per_min: 500,
+            minimum_fare: 10000,
+            is_active: true
+        });
     };
 
     // --- Actions: Finance ---
@@ -76,7 +98,7 @@ export default function AdminFinance() {
     const handlePayment = async () => {
         if (!selectedDebtor || !paymentAmount) return;
         try {
-            await goApp.Wallet.markPaid(selectedDebtor.id, parseFloat(paymentAmount));
+            await goApp.entities.Wallet.markPaid(selectedDebtor.id, parseFloat(paymentAmount));
             setDebtors(debtors.map(d =>
                 d.id === selectedDebtor.id
                     ? { ...d, debt: d.debt - parseFloat(paymentAmount) }
@@ -84,7 +106,7 @@ export default function AdminFinance() {
             ).filter(d => d.debt > 0));
             setSelectedDebtor(null);
             setPaymentAmount('');
-            const newStats = await goApp.Wallet.getStats();
+            const newStats = await goApp.entities.Wallet.getStats();
             setStats(newStats);
         } catch (error) {
             console.error("Payment failed:", error);
@@ -93,7 +115,7 @@ export default function AdminFinance() {
 
     const generatePayout = async () => {
         try {
-            await goApp.Wallet.generatePayout();
+            await goApp.entities.Wallet.generatePayout();
             alert("Archivo de pagos generado exitosamente. (Simulación)");
         } catch (error) {
             console.error("Payout failed:", error);
@@ -102,14 +124,21 @@ export default function AdminFinance() {
 
     // --- Actions: Tarifas ---
 
-    const handleUpdateTariff = async () => {
+    const handleSaveTariff = async () => {
         if (!editingTariff) return;
         try {
-            await goApp.entities.PriceConfig.update(editingTariff.id, editingTariff);
-            setPriceConfigs(priceConfigs.map(p => p.id === editingTariff.id ? editingTariff : p));
+            if (editingTariff.id) {
+                // Update existing
+                await goApp.entities.PriceConfig.update(editingTariff.id, editingTariff);
+                setPriceConfigs(priceConfigs.map(p => p.id === editingTariff.id ? editingTariff : p));
+            } else {
+                // Create new
+                const newConfig = await goApp.entities.PriceConfig.create(editingTariff);
+                setPriceConfigs([...priceConfigs, newConfig]);
+            }
             setEditingTariff(null);
         } catch (error) {
-            console.error("Failed to update tariff:", error);
+            console.error("Failed to save tariff:", error);
         }
     };
 
@@ -193,7 +222,7 @@ export default function AdminFinance() {
                                 <CardContent>
                                     <div className="text-2xl font-bold text-white flex items-center gap-2">
                                         <DollarSign size={20} className="text-[#00D4B1]" />
-                                        {stats?.total_revenue.toLocaleString('es-PY')}
+                                        {stats?.total_revenue?.toLocaleString('es-PY') || '0'}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -204,7 +233,7 @@ export default function AdminFinance() {
                                 <CardContent>
                                     <div className="text-2xl font-bold text-white flex items-center gap-2">
                                         <AlertCircle size={20} className="text-red-500" />
-                                        {stats?.pending_collections.toLocaleString('es-PY')}
+                                        {stats?.pending_collections?.toLocaleString('es-PY') || '0'}
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">Comisiones pendientes de cobro</p>
                                 </CardContent>
@@ -216,7 +245,7 @@ export default function AdminFinance() {
                                 <CardContent>
                                     <div className="text-2xl font-bold text-white flex items-center gap-2">
                                         <CreditCard size={20} className="text-yellow-500" />
-                                        {stats?.pending_payouts.toLocaleString('es-PY')}
+                                        {stats?.pending_payouts?.toLocaleString('es-PY') || '0'}
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">A pagar a conductores (Semanal)</p>
                                 </CardContent>
@@ -228,7 +257,7 @@ export default function AdminFinance() {
                                 <CardContent>
                                     <div className="text-2xl font-bold text-white flex items-center gap-2">
                                         <TrendingUp size={20} className="text-blue-500" />
-                                        {stats?.platform_balance.toLocaleString('es-PY')}
+                                        {stats?.platform_balance?.toLocaleString('es-PY') || '0'}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -354,6 +383,9 @@ export default function AdminFinance() {
                                 <Button variant="outline" className="border-[#2D2D44] text-gray-400 hover:text-white hover:bg-[#252538]">
                                     <Download size={16} className="mr-2" /> Exportar Tarifario
                                 </Button>
+                                <Button onClick={openCreateTariffModal} className="ml-2 bg-[#00D4B1] text-black hover:bg-[#00B89C]">
+                                    <Plus size={16} className="mr-2" /> Nueva Tarifa
+                                </Button>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <Table>
@@ -369,103 +401,114 @@ export default function AdminFinance() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {priceConfigs.map((config) => (
-                                            <TableRow key={config.id} className="border-[#2D2D44] hover:bg-[#252538]">
-                                                <TableCell className="font-medium text-white flex items-center gap-2">
-                                                    {config.name}
-                                                </TableCell>
-                                                <TableCell className="text-right text-gray-300">{config.base_fare.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right text-gray-300">{config.price_per_km.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right text-gray-300">{config.price_per_min.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right text-gray-300">{config.minimum_fare.toLocaleString()}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge className={config.is_active ? "bg-green-500/20 text-green-500 hover:bg-green-500/30" : "bg-red-500/20 text-red-500"}>
-                                                        {config.is_active ? "Activo" : "Inactivo"}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-[#00D4B1] hover:bg-[#00D4B1]/10 hover:text-[#00D4B1]"
-                                                        onClick={() => setEditingTariff(config)}
-                                                    >
-                                                        <Edit2 size={16} />
-                                                    </Button>
+                                        {priceConfigs.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="text-center text-gray-400 py-8">
+                                                    No hay tarifas configuradas. ¡Crea una nueva!
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
+                                        ) : (
+                                            priceConfigs.map((config) => (
+                                                <TableRow key={config.id} className="border-[#2D2D44] hover:bg-[#252538]">
+                                                    <TableCell className="font-medium text-white flex items-center gap-2">
+                                                        {config.name}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-gray-300">{config.base_fare.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right text-gray-300">{config.price_per_km.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right text-gray-300">{config.price_per_min.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right text-gray-300">{config.minimum_fare.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge className={config.is_active ? "bg-green-500/20 text-green-500 hover:bg-green-500/30" : "bg-red-500/20 text-red-500"}>
+                                                            {config.is_active ? "Activo" : "Inactivo"}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-[#00D4B1] hover:bg-[#00D4B1]/10 hover:text-[#00D4B1]"
+                                                            onClick={() => setEditingTariff(config)}
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
                                     </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
                     </div>
-                )}
+                )
+                }
 
                 {/* --- TAB: ZONAS --- */}
-                {activeTab === 'zones' && (
-                    <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {zones.map(zone => (
-                            <Card key={zone.id} className="bg-[#1A1A2E] border-[#2D2D44] relative overflow-hidden group">
-                                <div className={`absolute top-0 right-0 p-3 rounded-bl-xl ${zone.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-400'}`}>
-                                    {zone.is_active ? 'Activa' : 'Inactiva'}
-                                </div>
-                                <CardHeader>
-                                    <CardTitle className="text-white flex items-center gap-2">
-                                        <Map className="text-blue-500" size={20} />
-                                        {zone.name}
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Tipo: {zone.type === 'surge' ? 'Tarifa Dinámica' : 'Tarifa Fija'}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="flex items-center justify-between bg-[#252538] p-4 rounded-lg">
-                                        <div className="flex items-center gap-3">
-                                            <Zap className={zone.type === 'surge' ? "text-yellow-500" : "text-gray-500"} size={24} />
-                                            <div>
-                                                <p className="text-xs text-gray-400 uppercase font-bold">
-                                                    {zone.type === 'surge' ? 'Multiplicador' : 'Costo Fijo'}
-                                                </p>
-                                                <p className="text-2xl font-bold text-white">
-                                                    {zone.type === 'surge' ? `${zone.value}x` : `Gs. ${zone.value.toLocaleString()}`}
-                                                </p>
+                {
+                    activeTab === 'zones' && (
+                        <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {zones.map(zone => (
+                                <Card key={zone.id} className="bg-[#1A1A2E] border-[#2D2D44] relative overflow-hidden group">
+                                    <div className={`absolute top-0 right-0 p-3 rounded-bl-xl ${zone.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-400'}`}>
+                                        {zone.is_active ? 'Activa' : 'Inactiva'}
+                                    </div>
+                                    <CardHeader>
+                                        <CardTitle className="text-white flex items-center gap-2">
+                                            <Map className="text-blue-500" size={20} />
+                                            {zone.name}
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Tipo: {zone.type === 'surge' ? 'Tarifa Dinámica' : 'Tarifa Fija'}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-center justify-between bg-[#252538] p-4 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <Zap className={zone.type === 'surge' ? "text-yellow-500" : "text-gray-500"} size={24} />
+                                                <div>
+                                                    <p className="text-xs text-gray-400 uppercase font-bold">
+                                                        {zone.type === 'surge' ? 'Multiplicador' : 'Costo Fijo'}
+                                                    </p>
+                                                    <p className="text-2xl font-bold text-white">
+                                                        {zone.type === 'surge' ? `${zone.value}x` : `Gs. ${zone.value.toLocaleString()}`}
+                                                    </p>
+                                                </div>
                                             </div>
+                                            <Button
+                                                size="sm"
+                                                className="bg-[#2D2D44] hover:bg-[#3d3d5c] text-white"
+                                                onClick={() => setEditingZone(zone)}
+                                            >
+                                                <Settings size={16} /> Configurar
+                                            </Button>
                                         </div>
-                                        <Button
-                                            size="sm"
-                                            className="bg-[#2D2D44] hover:bg-[#3d3d5c] text-white"
-                                            onClick={() => setEditingZone(zone)}
-                                        >
-                                            <Settings size={16} /> Configurar
-                                        </Button>
-                                    </div>
 
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            className={`w-full border-[#2D2D44] ${zone.is_active ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-green-400 hover:text-green-300 hover:bg-green-900/20'}`}
-                                            onClick={() => toggleZoneActive(zone)}
-                                        >
-                                            {zone.is_active ? 'Desactivar Zona' : 'Activar Zona'}
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                className={`w-full border-[#2D2D44] ${zone.is_active ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-green-400 hover:text-green-300 hover:bg-green-900/20'}`}
+                                                onClick={() => toggleZoneActive(zone)}
+                                            >
+                                                {zone.is_active ? 'Desactivar Zona' : 'Activar Zona'}
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
 
-                        <Card className="bg-[#1A1A2E]/50 border-[#2D2D44] border-dashed border-2 flex items-center justify-center p-8 cursor-pointer hover:bg-[#1A1A2E] hover:border-[#00D4B1] transition-colors group">
-                            <div className="text-center space-y-2 group-hover:scale-105 transition-transform">
-                                <div className="bg-[#252538] p-4 rounded-full w-fit mx-auto group-hover:bg-[#00D4B1]/20">
-                                    <Map className="text-gray-400 group-hover:text-[#00D4B1]" size={32} />
+                            <Card className="bg-[#1A1A2E]/50 border-[#2D2D44] border-dashed border-2 flex items-center justify-center p-8 cursor-pointer hover:bg-[#1A1A2E] hover:border-[#00D4B1] transition-colors group">
+                                <div className="text-center space-y-2 group-hover:scale-105 transition-transform">
+                                    <div className="bg-[#252538] p-4 rounded-full w-fit mx-auto group-hover:bg-[#00D4B1]/20">
+                                        <Map className="text-gray-400 group-hover:text-[#00D4B1]" size={32} />
+                                    </div>
+                                    <h3 className="text-lg font-medium text-white">Crear Nueva Zona</h3>
+                                    <p className="text-sm text-gray-500">Dibuja un polígono en el mapa</p>
                                 </div>
-                                <h3 className="text-lg font-medium text-white">Crear Nueva Zona</h3>
-                                <p className="text-sm text-gray-500">Dibuja un polígono en el mapa</p>
-                            </div>
-                        </Card>
-                    </div>
-                )}
-            </main>
+                            </Card>
+                        </div>
+                    )
+                }
+            </main >
 
             {/* --- DIALOGS --- */}
 
@@ -501,17 +544,50 @@ export default function AdminFinance() {
                 </DialogContent>
             </Dialog>
 
-            {/* Tariff Edit Dialog */}
+            {/* Tariff Edit/Create Dialog */}
             <Dialog open={!!editingTariff} onOpenChange={() => setEditingTariff(null)}>
                 <DialogContent className="bg-[#1A1A2E] border-[#2D2D44] text-white sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Editar Tarifa: {editingTariff?.name}</DialogTitle>
+                        <DialogTitle>{editingTariff?.id ? 'Editar Tarifa' : 'Nueva Tarifa'}</DialogTitle>
                         <DialogDescription>
-                            Modifica los parámetros de costo para esta categoría.
+                            Configura los parámetros de cobro para este tipo de vehículo.
                         </DialogDescription>
                     </DialogHeader>
                     {editingTariff && (
                         <div className="grid gap-4 py-4">
+                            {!editingTariff.id && (
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right text-gray-400">Tipo</Label>
+                                    <div className="col-span-3">
+                                        <select
+                                            value={editingTariff.vehicle_type}
+                                            onChange={(e) => {
+                                                const type = e.target.value;
+                                                setEditingTariff({
+                                                    ...editingTariff,
+                                                    vehicle_type: type,
+                                                    display_name: theme.vehicleTypes[type]?.name || type
+                                                });
+                                            }}
+                                            className="w-full bg-[#252538] border border-[#2D2D44] text-white rounded-md p-2"
+                                        >
+                                            {Object.entries(theme.vehicleTypes).map(([key, value]) => (
+                                                <option key={key} value={key}>{value.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right text-gray-400">Nombre</Label>
+                                <Input
+                                    value={editingTariff.display_name}
+                                    onChange={(e) => setEditingTariff({ ...editingTariff, display_name: e.target.value })}
+                                    className="col-span-3 bg-[#252538] border-[#2D2D44] text-white"
+                                />
+                            </div>
+
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label className="text-right text-gray-400">Base Gs.</Label>
                                 <Input
@@ -552,8 +628,8 @@ export default function AdminFinance() {
                     )}
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setEditingTariff(null)}>Cancelar</Button>
-                        <Button className="bg-[#00D4B1] text-black hover:bg-[#00B89C]" onClick={handleUpdateTariff}>
-                            <Save size={18} className="mr-2" /> Guardar Cambios
+                        <Button className="bg-[#00D4B1] text-black hover:bg-[#00B89C]" onClick={handleSaveTariff}>
+                            <Save size={18} className="mr-2" /> Guardar
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -590,6 +666,6 @@ export default function AdminFinance() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

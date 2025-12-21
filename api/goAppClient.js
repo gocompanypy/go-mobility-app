@@ -274,28 +274,35 @@ export const goApp = {
         },
         // Mocks temporales para entidades que no están en Supabase aun
         PriceConfig: {
-            list: async () => [
-                { id: 1, name: 'Standard', vehicle_type: 'standard', base_fare: 5500, price_per_km: 3800, price_per_min: 550, minimum_fare: 11000, is_active: true }, // Bolt/Red
-                { id: 2, name: 'Economy', vehicle_type: 'economy', base_fare: 5000, price_per_km: 3500, price_per_min: 500, minimum_fare: 10000, is_active: true },
-                { id: 3, name: 'Large', vehicle_type: 'large', base_fare: 8000, price_per_km: 5000, price_per_min: 800, minimum_fare: 18000, is_active: true }, // L
-                { id: 4, name: 'Comfort', vehicle_type: 'comfort', base_fare: 7000, price_per_km: 4500, price_per_min: 700, minimum_fare: 15000, is_active: true },
-                { id: 5, name: 'Ploteado', vehicle_type: 'branded', base_fare: 4500, price_per_km: 3200, price_per_min: 450, minimum_fare: 9000, is_active: true }, // Branded/Green
-                { id: 6, name: 'Moto', vehicle_type: 'moto', base_fare: 3000, price_per_km: 2000, price_per_min: 300, minimum_fare: 6000, is_active: true }
-            ],
-            update: async () => { },
+            list: async () => {
+                const { data, error } = await supabase.from('price_configs').select('*').order('vehicle_type');
+                if (error) {
+                    console.error("Error fetching price configs:", error);
+                    return [];
+                }
+                return data;
+            },
+            update: async (id, updates) => {
+                const { data, error } = await supabase.from('price_configs').update(updates).eq('id', id).select();
+                if (error) throw error;
+                return data[0];
+            },
+            create: async (data) => {
+                const { data: newConfig, error } = await supabase.from('price_configs').insert([data]).select();
+                if (error) throw error;
+                return newConfig[0];
+            },
             filter: async (criteria) => {
-                // Mock filter for PriceConfig
-                const allConfigs = [
-                    { id: 1, name: 'Standard', vehicle_type: 'standard', base_fare: 5500, price_per_km: 3800, price_per_min: 550, minimum_fare: 11000, is_active: true },
-                    { id: 2, name: 'Economy', vehicle_type: 'economy', base_fare: 5000, price_per_km: 3500, price_per_min: 500, minimum_fare: 10000, is_active: true },
-                    { id: 3, name: 'Large', vehicle_type: 'large', base_fare: 8000, price_per_km: 5000, price_per_min: 800, minimum_fare: 18000, is_active: true },
-                    { id: 4, name: 'Comfort', vehicle_type: 'comfort', base_fare: 7000, price_per_km: 4500, price_per_min: 700, minimum_fare: 15000, is_active: true },
-                    { id: 5, name: 'Ploteado', vehicle_type: 'branded', base_fare: 4500, price_per_km: 3200, price_per_min: 450, minimum_fare: 9000, is_active: true },
-                    { id: 6, name: 'Moto', vehicle_type: 'moto', base_fare: 3000, price_per_km: 2000, price_per_min: 300, minimum_fare: 6000, is_active: true }
-                ];
-                return allConfigs.filter(c => {
-                    return Object.entries(criteria).every(([key, value]) => c[key] === value);
+                let query = supabase.from('price_configs').select('*');
+                Object.entries(criteria).forEach(([key, value]) => {
+                    query = query.eq(key, value);
                 });
+                const { data, error } = await query;
+                if (error) {
+                    console.error("Error filtering price configs:", error);
+                    return [];
+                }
+                return data;
             }
         },
         Vehicle: {

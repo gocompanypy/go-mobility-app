@@ -136,10 +136,16 @@ export default function PassengerHome() {
         if (!pickup.lat || !dropoff.lat) return;
 
         try {
-            // Get configs or use Fallback Mock Data to match user request
-            let configs = await goApp.entities.PriceConfig.filter({ is_active: true });
+            // GUARANTEED MOCK DATA + DB
+            let configs = [];
 
-            // FALLBACK MOCK DATA if DB is empty (for demo purposes)
+            try {
+                configs = await goApp.entities.PriceConfig.filter({ is_active: true });
+            } catch (err) {
+                console.warn("DB Price Config failed, using fallback", err);
+            }
+
+            // FALLBACK MOCK DATA if DB is empty (for demo purposes) or Failed
             if (!configs || configs.length === 0) {
                 configs = [
                     { vehicle_type: 'economy', base_fare: 15000, price_per_km: 3000, price_per_min: 500, minimum_fare: 20000 },
