@@ -41,7 +41,6 @@ export default function DriverLogin() {
                         label: "Registrarme",
                         onClick: () => navigate(createPageUrl('DriverSignup')),
                     },
-                    duration: 6000,
                 });
             } else {
                 toast.error("Error al iniciar sesión", {

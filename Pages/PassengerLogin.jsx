@@ -44,7 +44,6 @@ export default function PassengerLogin() {
                         label: "Crear Cuenta",
                         onClick: () => navigate(createPageUrl('PassengerSignup'), { state: { phone } }),
                     },
-                    duration: 6000,
                 });
             } else {
                 toast.error("Error al iniciar sesión", {
