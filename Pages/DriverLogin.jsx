@@ -26,7 +26,27 @@ export default function DriverLogin() {
             navigate(createPageUrl('DriverHome'));
         } catch (error) {
             console.error(error);
-            toast.error(error.message || 'Error al iniciar sesión');
+            // Customizable error handling for drivers
+            const isAuthError = error.message && (
+                error.message.includes("Credenciales incorrectas") ||
+                error.message.includes("Invalid login credentials")
+            );
+
+            if (isAuthError) {
+                toast("No pudimos ingresar", {
+                    description: "El usuario no existe o los datos son incorrectos. ¿Aún no eres conductor?",
+                    action: {
+                        label: "Registrarme",
+                        onClick: () => navigate(createPageUrl('DriverSignup')),
+                    },
+                    duration: 8000,
+                    className: "border-l-4 border-yellow-400 bg-neutral-900 text-white"
+                });
+            } else {
+                toast.error("Error al iniciar sesión", {
+                    description: error.message || "Verifica tu conexión e inténtalo de nuevo."
+                });
+            }
         } finally {
             setIsLoading(false);
         }

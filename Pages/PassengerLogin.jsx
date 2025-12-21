@@ -27,9 +27,16 @@ export default function PassengerLogin() {
         } catch (error) {
             console.error(error);
 
-            if (error.message && error.message.includes("no está registrado")) {
-                toast("Número no corresponde", {
-                    description: "El número ingresado no corresponde a un usuario registrado. ¿Quieres crear una cuenta?",
+            // Check for both English (Supabase default) and Spanish (Custom) error messages
+            const isAuthError = error.message && (
+                error.message.includes("Credenciales incorrectas") ||
+                error.message.includes("Invalid login credentials") ||
+                error.message.includes("no está registrado")
+            );
+
+            if (isAuthError) {
+                toast("Problema de inicio de sesión", {
+                    description: "El usuario no existe o la contraseña es incorrecta. Si es tu primera vez, crea una cuenta.",
                     action: {
                         label: "Crear Cuenta",
                         onClick: () => navigate(createPageUrl('PassengerSignup'), { state: { phone } }),
@@ -39,7 +46,7 @@ export default function PassengerLogin() {
                 });
             } else {
                 toast.error("Error al iniciar sesión", {
-                    description: error.message || "Ocurrió un error inesperado."
+                    description: error.message || "Ocurrió un error inesperado, intenta nuevamente."
                 });
             }
         } finally {
