@@ -38,14 +38,13 @@ export default function PassengerLogin() {
                 errorMessage.includes("user not found");
 
             if (isAuthError) {
-                toast("Problema de inicio de sesión", {
-                    description: "El usuario no existe o la contraseña es incorrecta. Si es tu primera vez, crea una cuenta.",
+                toast("No encontramos tu cuenta", {
+                    description: "Parece que este número no está registrado o la contraseña es incorrecta.",
                     action: {
                         label: "Crear Cuenta",
                         onClick: () => navigate(createPageUrl('PassengerSignup'), { state: { phone } }),
                     },
-                    duration: 8000,
-                    className: "border-l-4 border-yellow-400 bg-neutral-900 text-white"
+                    duration: 6000,
                 });
             } else {
                 toast.error("Error al iniciar sesión", {

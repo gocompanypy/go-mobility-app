@@ -120,7 +120,27 @@ export default function App() {
                 {/* Catch all - Redirect to Home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-            <Toaster position="top-center" richColors />
+            <Toaster
+                position="top-center"
+                theme="dark"
+                toastOptions={{
+                    style: {
+                        background: 'rgba(10, 10, 10, 0.95)',
+                        backdropFilter: 'blur(16px)',
+                        border: '1px solid rgba(255, 215, 0, 0.15)',
+                        color: 'white',
+                        borderRadius: '16px',
+                        padding: '16px',
+                        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5), 0 0 15px rgba(255, 215, 0, 0.1)'
+                    },
+                    classNames: {
+                        toast: 'group toast group-[.toaster]:bg-black/90 group-[.toaster]:text-white group-[.toaster]:border-white/10 group-[.toaster]:shadow-lg',
+                        description: 'group-[.toast]:text-gray-400',
+                        actionButton: 'group-[.toast]:bg-[#FFD700] group-[.toast]:text-black group-[.toast]:font-bold',
+                        cancelButton: 'group-[.toast]:bg-zinc-800 group-[.toast]:text-white',
+                    }
+                }}
+            />
         </BrowserRouter>
     );
 }

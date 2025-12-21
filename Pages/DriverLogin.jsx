@@ -36,13 +36,12 @@ export default function DriverLogin() {
 
             if (isAuthError) {
                 toast("No pudimos ingresar", {
-                    description: "El usuario no existe o los datos son incorrectos. ¿Aún no eres conductor?",
+                    description: "Verifica tus datos. Si aún no eres conductor, regístrate aquí.",
                     action: {
                         label: "Registrarme",
                         onClick: () => navigate(createPageUrl('DriverSignup')),
                     },
-                    duration: 8000,
-                    className: "border-l-4 border-yellow-400 bg-neutral-900 text-white"
+                    duration: 6000,
                 });
             } else {
                 toast.error("Error al iniciar sesión", {
