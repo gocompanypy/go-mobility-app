@@ -467,6 +467,30 @@ export const goApp = {
                     console.log(`Mock Toggle Agreement ${id}`);
                     return { success: true };
                 }
+            },
+            TrustedContact: {
+                list: async () => {
+                    const { data, error } = await supabase.from('trusted_contacts').select('*');
+                    if (error) throw error;
+                    return data;
+                },
+                add: async (contact) => {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) throw new Error("No user logged in");
+
+                    const { data, error } = await supabase.from('trusted_contacts').insert([{
+                        user_id: user.id,
+                        ...contact
+                    }]).select().single();
+
+                    if (error) throw error;
+                    return data;
+                },
+                remove: async (id) => {
+                    const { error } = await supabase.from('trusted_contacts').delete().eq('id', id);
+                    if (error) throw error;
+                    return { success: true };
+                }
             }
         },
         Security: {

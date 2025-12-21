@@ -17,7 +17,7 @@ import PassengerWelcome from './Pages/PassengerWelcome';
 import PassengerHistory from './Pages/PassengerHistory';
 import PassengerPromotions from './Pages/PassengerPromotions';
 import PassengerRewards from './Pages/PassengerRewards';
-import PassengerPayments from './Pages/PassengerPayments';
+import PassengerTrustedContacts from './Pages/PassengerTrustedContacts';
 import PassengerProfile from './Pages/PassengerProfile';
 
 // Driver Pages
@@ -78,7 +78,7 @@ export default function App() {
                 <Route path="/passenger/history" element={<PassengerHistory />} />
                 <Route path="/passenger/promotions" element={<PassengerPromotions />} />
                 <Route path="/passenger/rewards" element={<PassengerRewards />} />
-                <Route path="/passenger/payments" element={<PassengerPayments />} />
+                <Route path="/passenger/trusted-contacts" element={<PassengerTrustedContacts />} />
                 <Route path="/passenger/profile" element={<PassengerProfile />} />
 
                 {/* Error Pages */}

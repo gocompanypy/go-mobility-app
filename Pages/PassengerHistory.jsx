@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { ArrowLeft, MapPin, Calendar, Star, Receipt, ChevronRight, User } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Star, Receipt, ChevronRight, User, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import Logo from '@/components/go/Logo';
 import { theme } from '@/components/go/theme';
 
 export default function PassengerHistory() {
@@ -44,165 +43,198 @@ export default function PassengerHistory() {
     const getStatusBadge = (status) => {
         const config = theme.tripStatuses[status] || { label: status, color: '#666' };
         return (
-            <span
-                className="px-2 py-1 rounded-full text-xs font-medium"
-                style={{ backgroundColor: `${config.color}20`, color: config.color }}
-            >
+            <div className={`
+                px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
+                flex items-center gap-1.5 backdrop-blur-md border
+            `}
+                style={{
+                    backgroundColor: `${config.color}15`,
+                    color: config.color,
+                    borderColor: `${config.color}30`
+                }}>
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: config.color }} />
                 {config.label}
-            </span>
+            </div>
         );
     };
 
     return (
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen bg-[#050505] text-white selection:bg-[#00D4B1] selection:text-black font-sans">
+            {/* Ambient Background */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-[#00D4B1]/5 to-transparent blur-3xl" />
+            </div>
+
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-xl border-b-2 border-[#FFD700]/20 gold-glow" style={{ boxShadow: '0 4px 24px rgba(255, 215, 0, 0.15)' }}>
-                <div className="flex items-center gap-4 px-4 py-3">
+            <header className="sticky top-0 z-40 bg-[#050505]/80 backdrop-blur-xl border-b border-[#ffffff]/5">
+                <div className="flex items-center gap-4 px-4 py-3 max-w-2xl mx-auto">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate(createPageUrl('PassengerHome'))}
-                        className="text-white"
+                        className="text-gray-400 hover:text-white hover:bg-white/5 rounded-full"
                     >
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={20} />
                     </Button>
-                    <h1 className="text-xl font-bold">Mis viajes</h1>
+                    <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                        Mis Viajes
+                    </h1>
                 </div>
             </header>
 
-            {/* Filters */}
-            <div className="px-4 py-4">
-                <Tabs value={filter} onValueChange={setFilter}>
-                    <TabsList className="bg-[#1A1A2E] w-full">
-                        <TabsTrigger value="all" className="flex-1 data-[state=active]:bg-[#00D4B1] data-[state=active]:text-black">
-                            Todos
-                        </TabsTrigger>
-                        <TabsTrigger value="completed" className="flex-1 data-[state=active]:bg-[#00D4B1] data-[state=active]:text-black">
-                            Completados
-                        </TabsTrigger>
-                        <TabsTrigger value="cancelled" className="flex-1 data-[state=active]:bg-[#00D4B1] data-[state=active]:text-black">
-                            Cancelados
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
-
-            {/* Trip List */}
-            <div className="px-4 pb-8">
-                {isLoading ? (
-                    <div className="space-y-4">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="bg-[#1A1A2E] rounded-xl p-4 animate-pulse">
-                                <div className="h-4 bg-[#252538] rounded w-1/3 mb-3" />
-                                <div className="h-3 bg-[#252538] rounded w-2/3 mb-2" />
-                                <div className="h-3 bg-[#252538] rounded w-1/2" />
-                            </div>
-                        ))}
-                    </div>
-                ) : filteredTrips.length === 0 ? (
-                    <div className="text-center py-12">
-                        <div className="w-16 h-16 bg-[#1A1A2E] rounded-full flex items-center justify-center mx-auto mb-4">
-                            <MapPin size={32} className="text-gray-500" />
-                        </div>
-                        <h3 className="text-lg font-semibold mb-2">Sin viajes</h3>
-                        <p className="text-gray-400">
-                            {filter === 'all'
-                                ? 'Aún no has realizado ningún viaje'
-                                : `No tienes viajes ${filter === 'completed' ? 'completados' : 'cancelados'}`
-                            }
-                        </p>
-                        <Button
-                            onClick={() => navigate(createPageUrl('PassengerHome'))}
-                            className="mt-4 bg-[#00D4B1] hover:bg-[#00B89C] text-black"
-                        >
-                            Pedir un viaje
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {filteredTrips.map(trip => {
-                            const vehicleConfig = theme.vehicleTypes[trip.vehicle_type] || theme.vehicleTypes.economy;
-
-                            return (
-                                <div
-                                    key={trip.id}
-                                    className="bg-[#1A1A2E] rounded-xl border border-[#2D2D44] overflow-hidden hover:border-[#FFD700]/30 transition-colors"
+            <main className="max-w-2xl mx-auto">
+                {/* Filters */}
+                <div className="px-4 py-6 sticky top-[60px] z-30 bg-[#050505]/95 backdrop-blur-xl">
+                    <Tabs value={filter} onValueChange={setFilter} className="w-full">
+                        <TabsList className="bg-[#1A1A2E]/50 p-1 w-full border border-white/5 rounded-full">
+                            {['all', 'completed', 'cancelled'].map((tab) => (
+                                <TabsTrigger
+                                    key={tab}
+                                    value={tab}
+                                    className="
+                                        flex-1 rounded-full text-xs font-medium py-2 transition-all duration-300
+                                        data-[state=active]:bg-[#00D4B1] data-[state=active]:text-black 
+                                        data-[state=active]:shadow-[0_0_20px_rgba(0,212,177,0.3)]
+                                        text-gray-400 hover:text-white
+                                    "
                                 >
-                                    <div className="flex">
-                                        {/* Mini Map Thumbnail */}
-                                        <div className="w-24 h-full min-h-[120px] bg-[#252538] relative overflow-hidden border-r border-[#2D2D44]">
-                                            {/* Stylized Map Background */}
-                                            <div className="absolute inset-0 bg-[#111] opacity-60" style={{
-                                                backgroundImage: 'radial-gradient(#333 1px, transparent 1px)',
-                                                backgroundSize: '10px 10px'
-                                            }} />
-                                            {/* Route Line Simulation */}
-                                            <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                                <path d="M20,80 Q50,50 80,20" stroke="#00D4B1" strokeWidth="4" fill="none" strokeDasharray="5,2" />
-                                                <circle cx="20" cy="80" r="4" fill="#00D4B1" />
-                                                <circle cx="80" cy="20" r="4" fill="#FFD700" />
-                                            </svg>
-                                        </div>
+                                    {tab === 'all' ? 'Todos' : tab === 'completed' ? 'Completados' : 'Cancelados'}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
+                </div>
 
-                                        <div className="flex-1">
-                                            {/* Trip Header */}
-                                            <div className="p-3 border-b border-[#2D2D44] flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm text-gray-400">
-                                                        {format(new Date(trip.created_date), "d MMM, HH:mm", { locale: es })}
-                                                    </span>
+                {/* Trip List */}
+                <div className="px-4 pb-12 space-y-4">
+                    {isLoading ? (
+                        <div className="space-y-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="bg-[#1A1A2E]/30 rounded-2xl p-5 border border-white/5 animate-pulse">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="h-4 bg-white/5 rounded w-24" />
+                                        <div className="h-6 bg-white/5 rounded-full w-20" />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="h-3 bg-white/5 rounded w-3/4" />
+                                        <div className="h-3 bg-white/5 rounded w-1/2" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : filteredTrips.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in duration-500">
+                            <div className="w-24 h-24 bg-gradient-to-tr from-[#1A1A2E] to-[#252538] rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/5 relative group">
+                                <div className="absolute inset-0 bg-[#00D4B1] opacity-0 group-hover:opacity-20 rounded-full blur-xl transition-opacity duration-500" />
+                                <MapPin size={40} className="text-gray-500 group-hover:text-[#00D4B1] transition-colors duration-300" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2 text-white">
+                                {filter === 'all' ? 'Aún sin viajes' : 'Carpeta vacía'}
+                            </h3>
+                            <p className="text-gray-400 text-center text-sm max-w-[250px] mb-8 leading-relaxed">
+                                {filter === 'all'
+                                    ? 'Tu historial aparecerá aquí cuando completes tu primer viaje.'
+                                    : `No hay viajes ${filter === 'completed' ? 'completados' : 'cancelados'} para mostrar en este momento.`
+                                }
+                            </p>
+
+                            {filter === 'all' && (
+                                <Button
+                                    onClick={() => navigate(createPageUrl('PassengerHome'))}
+                                    className="
+                                        bg-[#00D4B1] text-black font-bold px-8 py-6 rounded-full
+                                        shadow-[0_0_30px_rgba(0,212,177,0.3)] hover:shadow-[0_0_50px_rgba(0,212,177,0.5)]
+                                        hover:bg-[#00ebd4] hover:scale-105 transition-all duration-300
+                                    "
+                                >
+                                    Pedir mi primer viaje
+                                    <ArrowRight className="ml-2" size={20} />
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {filteredTrips.map((trip, idx) => {
+                                const vehicleConfig = theme.vehicleTypes[trip.vehicle_type] || theme.vehicleTypes.economy;
+                                const isCompleted = trip.status === 'completed';
+
+                                return (
+                                    <div
+                                        key={trip.id}
+                                        className="
+                                            group bg-[#12121A]/80 backdrop-blur-md rounded-2xl border border-white/5 
+                                            hover:border-[#00D4B1]/30 hover:bg-[#1A1A2E] transition-all duration-300
+                                            overflow-hidden relative animate-in slide-in-from-bottom-4 fade-in
+                                        "
+                                        style={{ animationDelay: `${idx * 50}ms` }}
+                                    >
+                                        {/* Status Line */}
+                                        <div className={`absolute top-0 left-0 bottom-0 w-1 ${isCompleted ? 'bg-[#00D4B1]' : 'bg-gray-700'}`} />
+
+                                        <div className="p-5 pl-7">
+                                            {/* Header */}
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-[#252538] flex items-center justify-center text-xl shadow-inner">
+                                                        {vehicleConfig.icon}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-white text-sm">{vehicleConfig.name}</h4>
+                                                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                            <Calendar size={10} />
+                                                            {format(new Date(trip.created_date), "d MMM, HH:mm", { locale: es })}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                                 {getStatusBadge(trip.status)}
                                             </div>
 
-                                            {/* Trip Route */}
-                                            <div className="p-3 space-y-2">
-                                                <div className="flex items-start gap-2">
-                                                    <div className="mt-1">
-                                                        <div className="w-1.5 h-1.5 bg-[#00D4B1] rounded-full" />
-                                                    </div>
-                                                    <p className="text-xs text-gray-300 line-clamp-1">{trip.pickup_address}</p>
+                                            {/* Route */}
+                                            <div className="relative pl-4 space-y-4 mb-5">
+                                                {/* Connecting Line */}
+                                                <div className="absolute left-[5px] top-[8px] bottom-[24px] w-[2px] bg-gradient-to-b from-[#00D4B1] to-[#FF3B30] opacity-30" />
+
+                                                <div className="relative">
+                                                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-[#00D4B1] bg-[#050505]" />
+                                                    <p className="text-sm text-gray-300 font-medium leading-tight">{trip.pickup_address}</p>
                                                 </div>
-                                                <div className="flex items-start gap-2">
-                                                    <div className="mt-1">
-                                                        <div className="w-1.5 h-1.5 bg-[#FF6B6B] rounded-full" />
+                                                <div className="relative">
+                                                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-sm border-2 border-[#FF3B30] bg-[#050505]" />
+                                                    <p className="text-sm text-gray-300 font-medium leading-tight">{trip.dropoff_address}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Footer Info */}
+                                            <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center border border-white/10">
+                                                            <User size={12} className="text-gray-400" />
+                                                        </div>
+                                                        <span className="text-xs text-gray-400">{trip.driver_name || 'Conductor'}</span>
                                                     </div>
-                                                    <p className="text-xs text-gray-300 line-clamp-1">{trip.dropoff_address}</p>
+                                                    {trip.passenger_rating && (
+                                                        <div className="flex items-center gap-1 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">
+                                                            <Star size={10} className="text-yellow-500" fill="currentColor" />
+                                                            <span className="text-[10px] font-bold text-yellow-500">{trip.passenger_rating}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="text-right">
+                                                    <span className="text-lg font-bold text-[#00D4B1] tracking-tight">
+                                                        Gs. {(trip.final_price || trip.estimated_price)?.toLocaleString('es-PY')}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Trip Footer */}
-                                    <div className="px-3 py-2 bg-[#252538] flex items-center justify-between border-t border-[#2D2D44]">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-gray-700 overflow-hidden">
-                                                {/* Driver Avatar Placeholder */}
-                                                <User size={16} className="m-1 text-gray-400" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-medium text-gray-300">{trip.driver_name || 'Conductor'}</span>
-                                                <span className="text-[10px] text-gray-500">{vehicleConfig.name}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            {trip.passenger_rating && (
-                                                <span className="flex items-center gap-1 text-yellow-400 text-xs font-bold">
-                                                    {trip.passenger_rating} <Star size={10} fill="currentColor" />
-                                                </span>
-                                            )}
-                                            <span className="text-sm font-bold text-[#FFD700]">
-                                                Gs. {(trip.final_price || trip.estimated_price)?.toLocaleString('es-PY')}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </main>
         </div>
     );
 }
