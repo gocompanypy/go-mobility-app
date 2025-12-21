@@ -105,6 +105,8 @@ export default function PassengerHome() {
             }
         } catch (error) {
             console.error('Error loading user:', error);
+            // If checking user fails, it's safer to redirect to login
+            navigate(createPageUrl('PassengerLogin'));
         }
     };
 

@@ -100,8 +100,9 @@ export const goApp = {
             return user;
         },
         me: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            return user;
+            const { data, error } = await supabase.auth.getUser();
+            if (error || !data) return null;
+            return data.user;
         }
     },
     entities: {
