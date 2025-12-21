@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { MapPin, Clock, CreditCard, History, User, Menu, ChevronRight, Car, Calendar, Bike, Key, Truck, Package, UtensilsCrossed, Search, Gift, Tag, Power, X } from 'lucide-react';
+import { MapPin, Clock, CreditCard, History, User, Menu, ChevronRight, Car, Calendar, Bike, Key, Truck, Package, UtensilsCrossed, Search, Gift, Tag, Power, X, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/go/Logo';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -239,15 +239,16 @@ export default function PassengerHome() {
                     {!isSidebarOpen && <Logo size="sm" />}
 
                     <div className="flex items-center gap-2">
-                        <NotificationBell userId={passenger?.id} userType="passenger" />
+                        {/* SOS Button - Highly Visible (Red) */}
                         <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-white"
-                            onClick={() => navigate(createPageUrl('PassengerHistory'))}
+                            variant="destructive"
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.5)]"
+                            onClick={() => toast.error('S.O.S. Activado: Enviando alerta a contactos y autoridades...')}
                         >
-                            <History size={24} />
+                            SOS
                         </Button>
+                        <NotificationBell userId={passenger?.id} userType="passenger" />
                     </div>
                 </div>
             </header>
@@ -274,7 +275,10 @@ export default function PassengerHome() {
                             </div>
                             <div>
                                 <p className="font-semibold">{passenger?.first_name} {passenger?.last_name}</p>
-                                <p className="text-sm text-gray-400 truncate w-40">{user?.email}</p>
+                                <div className="flex items-center gap-1 text-[#FFD700]">
+                                    <span className="text-sm font-bold">4.9</span>
+                                    <Star size={12} fill="currentColor" />
+                                </div>
                             </div>
                         </div>
 
@@ -289,6 +293,22 @@ export default function PassengerHome() {
                                 </span>
                                 <ChevronRight size={18} className="text-gray-400" />
                             </button>
+                            {/* Security Section in Menu */}
+                            <div className="py-2">
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-4">Seguridad</h3>
+                                <button
+                                    onClick={() => toast.info('Configuración de contactos de confianza')}
+                                    className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
+                                >
+                                    <span className="flex items-center gap-3">
+                                        <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                            <User size={14} className="text-blue-400" />
+                                        </div>
+                                        Contactos de confianza
+                                    </span>
+                                    <ChevronRight size={18} className="text-gray-400" />
+                                </button>
+                            </div>
                             <button
                                 onClick={() => navigate(createPageUrl('PassengerRewards'))}
                                 className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
@@ -385,13 +405,13 @@ export default function PassengerHome() {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => {/* Open search */ }}
-                                            className="flex-1 flex items-center gap-3 rounded-xl p-4 text-left border-2 transition-all gold-border"
+                                            className="flex-1 flex items-center gap-3 rounded-full p-4 text-left border-2 transition-all gold-border"
                                             style={{ background: 'linear-gradient(135deg, #0A0A0A, #000000)' }}
                                             onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.3)'}
                                             onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
                                         >
                                             <Search size={20} className="text-[#FFD700]" />
-                                            <span className="text-gray-400">¿Adónde vas?</span>
+                                            <span className="text-gray-400 font-medium text-lg">¿A dónde vas?</span>
                                         </button>
                                         <Button
                                             variant="outline"

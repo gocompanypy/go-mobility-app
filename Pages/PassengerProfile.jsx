@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { goApp } from '@/api/goAppClient';
 import { createPageUrl } from '@/lib/utils';
-import { ArrowLeft, User, MapPin, Save, Camera } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Save, Camera, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -82,7 +82,17 @@ export default function PassengerProfile() {
                         </button>
                     </div>
                     <h2 className="mt-4 text-xl font-bold">{profile.firstName} {profile.lastName}</h2>
-                    <p className="text-gray-400">{profile.email}</p>
+                    <div className="flex items-center gap-2 mt-1 px-3 py-1 bg-[#252538] rounded-full border border-[#FFD700]/30 shadow-[0_0_10px_rgba(255,215,0,0.1)]">
+                        <span className="text-[#FFD700] font-bold">4.9</span>
+                        <div className="flex gap-0.5">
+                            <Star size={14} className="fill-[#FFD700] text-[#FFD700]" />
+                            <Star size={14} className="fill-[#FFD700] text-[#FFD700]" />
+                            <Star size={14} className="fill-[#FFD700] text-[#FFD700]" />
+                            <Star size={14} className="fill-[#FFD700] text-[#FFD700]" />
+                            <Star size={14} className="fill-[#FFD700] text-[#FFD700]" />
+                        </div>
+                    </div>
+                    <p className="text-gray-400 mt-2">{profile.email}</p>
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-6">

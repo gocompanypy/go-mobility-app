@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { ArrowLeft, MapPin, Calendar, Star, Receipt, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Star, Receipt, ChevronRight, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -126,58 +126,76 @@ export default function PassengerHistory() {
                             return (
                                 <div
                                     key={trip.id}
-                                    className="bg-[#1A1A2E] rounded-xl border border-[#2D2D44] overflow-hidden"
+                                    className="bg-[#1A1A2E] rounded-xl border border-[#2D2D44] overflow-hidden hover:border-[#FFD700]/30 transition-colors"
                                 >
-                                    {/* Trip Header */}
-                                    <div className="p-4 border-b border-[#2D2D44]">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xl">{vehicleConfig.icon}</span>
-                                                <span className="font-medium">{vehicleConfig.name}</span>
-                                            </div>
-                                            {getStatusBadge(trip.status)}
+                                    <div className="flex">
+                                        {/* Mini Map Thumbnail */}
+                                        <div className="w-24 h-full min-h-[120px] bg-[#252538] relative overflow-hidden border-r border-[#2D2D44]">
+                                            {/* Stylized Map Background */}
+                                            <div className="absolute inset-0 bg-[#111] opacity-60" style={{
+                                                backgroundImage: 'radial-gradient(#333 1px, transparent 1px)',
+                                                backgroundSize: '10px 10px'
+                                            }} />
+                                            {/* Route Line Simulation */}
+                                            <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                                <path d="M20,80 Q50,50 80,20" stroke="#00D4B1" strokeWidth="4" fill="none" strokeDasharray="5,2" />
+                                                <circle cx="20" cy="80" r="4" fill="#00D4B1" />
+                                                <circle cx="80" cy="20" r="4" fill="#FFD700" />
+                                            </svg>
                                         </div>
-                                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                                            <Calendar size={14} />
-                                            {format(new Date(trip.created_date), "d 'de' MMMM, HH:mm", { locale: es })}
-                                        </div>
-                                    </div>
 
-                                    {/* Trip Route */}
-                                    <div className="p-4 space-y-3">
-                                        <div className="flex items-start gap-3">
-                                            <div className="mt-1.5">
-                                                <div className="w-2 h-2 bg-[#00D4B1] rounded-full" />
+                                        <div className="flex-1">
+                                            {/* Trip Header */}
+                                            <div className="p-3 border-b border-[#2D2D44] flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-gray-400">
+                                                        {format(new Date(trip.created_date), "d MMM, HH:mm", { locale: es })}
+                                                    </span>
+                                                </div>
+                                                {getStatusBadge(trip.status)}
                                             </div>
-                                            <p className="text-sm text-gray-300 flex-1">{trip.pickup_address}</p>
-                                        </div>
-                                        <div className="flex items-start gap-3">
-                                            <div className="mt-1.5">
-                                                <div className="w-2 h-2 bg-[#FF6B6B] rounded-full" />
+
+                                            {/* Trip Route */}
+                                            <div className="p-3 space-y-2">
+                                                <div className="flex items-start gap-2">
+                                                    <div className="mt-1">
+                                                        <div className="w-1.5 h-1.5 bg-[#00D4B1] rounded-full" />
+                                                    </div>
+                                                    <p className="text-xs text-gray-300 line-clamp-1">{trip.pickup_address}</p>
+                                                </div>
+                                                <div className="flex items-start gap-2">
+                                                    <div className="mt-1">
+                                                        <div className="w-1.5 h-1.5 bg-[#FF6B6B] rounded-full" />
+                                                    </div>
+                                                    <p className="text-xs text-gray-300 line-clamp-1">{trip.dropoff_address}</p>
+                                                </div>
                                             </div>
-                                            <p className="text-sm text-gray-300 flex-1">{trip.dropoff_address}</p>
                                         </div>
                                     </div>
 
                                     {/* Trip Footer */}
-                                    <div className="px-4 py-3 bg-[#252538] flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-lg font-bold">
-                                                Gs. {(trip.final_price || trip.estimated_price)?.toLocaleString('es-PY')}
-                                            </span>
+                                    <div className="px-3 py-2 bg-[#252538] flex items-center justify-between border-t border-[#2D2D44]">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-gray-700 overflow-hidden">
+                                                {/* Driver Avatar Placeholder */}
+                                                <User size={16} className="m-1 text-gray-400" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-medium text-gray-300">{trip.driver_name || 'Conductor'}</span>
+                                                <span className="text-[10px] text-gray-500">{vehicleConfig.name}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
                                             {trip.passenger_rating && (
-                                                <span className="flex items-center gap-1 text-yellow-400 text-sm">
-                                                    <Star size={14} fill="currentColor" />
-                                                    {trip.passenger_rating}
+                                                <span className="flex items-center gap-1 text-yellow-400 text-xs font-bold">
+                                                    {trip.passenger_rating} <Star size={10} fill="currentColor" />
                                                 </span>
                                             )}
+                                            <span className="text-sm font-bold text-[#FFD700]">
+                                                Gs. {(trip.final_price || trip.estimated_price)?.toLocaleString('es-PY')}
+                                            </span>
                                         </div>
-                                        {trip.status === 'completed' && (
-                                            <Button variant="ghost" size="sm" className="text-[#00D4B1]">
-                                                <Receipt size={16} className="mr-1" />
-                                                Factura
-                                            </Button>
-                                        )}
                                     </div>
                                 </div>
                             );

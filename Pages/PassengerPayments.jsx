@@ -68,10 +68,10 @@ export default function PassengerPayments() {
                             </div>
                             <div className="flex-1">
                                 <p className="font-semibold">
-                                    {selectedMethod === 'cash' ? 'Efectivo' : `•••• ${cards.find(c => c.id === selectedMethod)?.last4}`}
+                                    {selectedMethod === 'cash' ? 'Efectivo' : 'Transferencia Bancaria'}
                                 </p>
                                 <p className="text-xs text-gray-400">
-                                    {selectedMethod === 'cash' ? 'Pago directo al conductor' : 'Tarjeta de crédito/débito'}
+                                    Pago directo al conductor
                                 </p>
                             </div>
                         </div>
@@ -80,7 +80,7 @@ export default function PassengerPayments() {
 
                 {/* Payment Methods List */}
                 <div className="space-y-4">
-                    <h2 className="text-sm text-gray-400 px-2">TUS MÉTODOS DE PAGO</h2>
+                    <h2 className="text-sm text-gray-400 px-2">MÉTODOS DE PAGO DISPONIBLES</h2>
 
                     {/* Cash Option */}
                     <button
@@ -89,100 +89,37 @@ export default function PassengerPayments() {
                     >
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-8 rounded bg-[#1A1A2E] flex items-center justify-center text-green-500 font-bold border border-[#2D2D44]">$</div>
-                            <span className="font-medium">Efectivo</span>
+                            <div className="text-left">
+                                <span className="block font-medium">Efectivo</span>
+                                <span className="text-xs text-gray-400">Pago directo al conductor</span>
+                            </div>
                         </div>
                         {selectedMethod === 'cash' && <CheckCircle2 className="text-[#00D4B1]" />}
                     </button>
 
-                    {/* Cards */}
-                    {cards.map(card => (
-                        <div
-                            key={card.id}
-                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${selectedMethod === card.id ? 'bg-[#252538] border-[#00D4B1]' : 'bg-[#0A0A0A] border-[#1A1A1A] hover:bg-[#1A1A2E]'}`}
-                        >
-                            <button
-                                onClick={() => setSelectedMethod(card.id)}
-                                className="flex-1 flex items-center gap-4"
-                            >
-                                <div className="w-12 h-8 rounded bg-[#1A1A2E] flex items-center justify-center border border-[#2D2D44]">
-                                    <CreditCard size={18} className="text-gray-400" />
-                                </div>
-                                <div className="text-left">
-                                    <p className="font-medium">•••• {card.last4}</p>
-                                    <p className="text-xs text-gray-400">Vence: {card.expiry}</p>
-                                </div>
-                            </button>
-                            <div className="flex items-center gap-2">
-                                {selectedMethod === card.id && <CheckCircle2 className="text-[#00D4B1] mr-2" />}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-gray-500 hover:text-red-400"
-                                    onClick={() => handleDeleteCard(card.id)}
-                                >
-                                    <Trash2 size={18} />
-                                </Button>
+                    {/* Transfer Option */}
+                    <button
+                        onClick={() => setSelectedMethod('transfer')}
+                        className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${selectedMethod === 'transfer' ? 'bg-[#252538] border-[#00D4B1]' : 'bg-[#0A0A0A] border-[#1A1A1A] hover:bg-[#1A1A2E]'}`}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-8 rounded bg-[#1A1A2E] flex items-center justify-center text-blue-400 border border-[#2D2D44]">
+                                <CreditCard size={18} />
+                            </div>
+                            <div className="text-left">
+                                <span className="block font-medium">Transferencia Bancaria</span>
+                                <span className="text-xs text-gray-400">Pago directo al conductor</span>
                             </div>
                         </div>
-                    ))}
+                        {selectedMethod === 'transfer' && <CheckCircle2 className="text-[#00D4B1]" />}
+                    </button>
 
-                    {/* Add Card Button */}
-                    {!showAddCard ? (
-                        <button
-                            onClick={() => setShowAddCard(true)}
-                            className="w-full flex items-center gap-4 p-4 rounded-xl border border-dashed border-[#2D2D44] hover:bg-[#1A1A2E] text-blue-400 transition-colors"
-                        >
-                            <div className="w-12 h-8 flex items-center justify-center">
-                                <Plus size={20} />
-                            </div>
-                            <span className="font-medium">Agregar método de pago</span>
-                        </button>
-                    ) : (
-                        <Card className="bg-[#1A1A2E] border-[#2D2D44]">
-                            <CardContent className="p-6">
-                                <form onSubmit={handleAddCard} className="space-y-4">
-                                    <Input
-                                        placeholder="Número de tarjeta"
-                                        value={newCard.number}
-                                        onChange={e => setNewCard({ ...newCard, number: e.target.value })}
-                                        required
-                                        className="bg-[#0A0A0A] border-[#2D2D44]"
-                                    />
-                                    <div className="flex gap-4">
-                                        <Input
-                                            placeholder="MM/YY"
-                                            value={newCard.expiry}
-                                            onChange={e => setNewCard({ ...newCard, expiry: e.target.value })}
-                                            required
-                                            className="bg-[#0A0A0A] border-[#2D2D44]"
-                                        />
-                                        <Input
-                                            placeholder="CVC"
-                                            value={newCard.cvc}
-                                            onChange={e => setNewCard({ ...newCard, cvc: e.target.value })}
-                                            required
-                                            className="bg-[#0A0A0A] border-[#2D2D44]"
-                                        />
-                                    </div>
-                                    <div className="flex gap-2 justify-end">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            onClick={() => setShowAddCard(false)}
-                                        >
-                                            Cancelar
-                                        </Button>
-                                        <Button
-                                            type="submit"
-                                            className="bg-[#00D4B1] text-black hover:bg-[#00B89C]"
-                                        >
-                                            Guardar Tarjeta
-                                        </Button>
-                                    </div>
-                                </form>
-                            </CardContent>
-                        </Card>
-                    )}
+                    <div className="mt-8 p-4 bg-[#1A1A2E]/50 rounded-xl border border-[#2D2D44] text-center">
+                        <p className="text-sm text-gray-400">
+                            <span className="text-[#FFD700] block mb-1 font-bold">Nota Importante</span>
+                            Todos los pagos se realizan directamente con el conductor al finalizar el viaje.
+                        </p>
+                    </div>
                 </div>
             </main>
         </div>
