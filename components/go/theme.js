@@ -8,9 +8,12 @@ export const theme = {
         searching: { label: 'Buscando', color: '#775DD0' }
     },
     vehicleTypes: {
-        estandar: { label: 'Estándar', icon: '🚗' },
-        premium: { label: 'Premium', icon: '🚙' },
-        moto: { label: 'Moto', icon: '🏍️' },
-        vip: { label: 'VIP', icon: '👑' }
+        economy: { label: 'Economy', name: 'Economy', icon: '🚗' },
+        comfort: { label: 'Comfort', name: 'Comfort', icon: '🚙' },
+        xl: { label: 'XL', name: 'XL', icon: '🚐' },
+        women: { label: 'Mujer', name: 'Mujer', icon: '👩' },
+        moto: { label: 'Moto', name: 'Bolt Moto', icon: '🏍️' },
+        premium: { label: 'Premium', name: 'Premium', icon: '👑' },
+        standard: { label: 'Standard', name: 'Bolt', icon: '🚗' }
     }
 };

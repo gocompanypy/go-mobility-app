@@ -130,11 +130,25 @@ export default function PassengerHome() {
         }
     };
 
+    const [selectedCategory, setSelectedCategory] = useState(null); // 'ride', 'moto', 'package', 'food'
+
     const calculatePrices = async () => {
         if (!pickup.lat || !dropoff.lat) return;
 
         try {
-            const configs = await goApp.entities.PriceConfig.filter({ is_active: true });
+            // Get configs or use Fallback Mock Data to match user request
+            let configs = await goApp.entities.PriceConfig.filter({ is_active: true });
+
+            // FALLBACK MOCK DATA if DB is empty (for demo purposes)
+            if (!configs || configs.length === 0) {
+                configs = [
+                    { vehicle_type: 'economy', base_fare: 15000, price_per_km: 3000, price_per_min: 500, minimum_fare: 20000 },
+                    { vehicle_type: 'moto', base_fare: 8000, price_per_km: 2000, price_per_min: 300, minimum_fare: 12000 },
+                    { vehicle_type: 'comfort', base_fare: 20000, price_per_km: 4000, price_per_min: 800, minimum_fare: 25000 },
+                    { vehicle_type: 'xl', base_fare: 30000, price_per_km: 5000, price_per_min: 1000, minimum_fare: 40000 },
+                    { vehicle_type: 'women', base_fare: 20000, price_per_km: 4000, price_per_min: 800, minimum_fare: 25000 }, // Conductora Mujer
+                ];
+            }
 
             // Calculate distance (simplified - using Haversine formula approximation)
             const distance = Math.sqrt(
@@ -156,6 +170,15 @@ export default function PassengerHome() {
                     surge_multiplier: 1.0,
                 };
             });
+
+            // Sort based on selection
+            if (selectedCategory === 'moto') {
+                estimates.sort((a, b) => (a.vehicle_type === 'moto' ? -1 : 1));
+            } else {
+                // Default: Economy first, then Moto, etc.
+                const order = ['economy', 'moto', 'women', 'comfort', 'xl'];
+                estimates.sort((a, b) => order.indexOf(a.vehicle_type) - order.indexOf(b.vehicle_type));
+            }
 
             setPriceEstimates(estimates);
             setStep('vehicles');
@@ -441,14 +464,16 @@ export default function PassengerHome() {
                                         <div className="grid grid-cols-4 gap-3">
                                             <button
                                                 onClick={() => {
+                                                    setSelectedCategory('ride');
                                                     setStep('input');
+                                                    toast.info("¿A dónde quieres ir?");
                                                 }}
-                                                className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95"
+                                                className={`flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 ${selectedCategory === 'ride' ? 'bg-[#FFD700]/10 border border-[#FFD700]' : ''}`}
                                             >
                                                 <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-[#FFD700]/20 shadow-lg shadow-[#FFD700]/10">
                                                     <img src="/assets/3d/ride.png" alt="Viaje" className="w-full h-full object-cover" />
                                                 </div>
-                                                <span className="text-xs text-center font-medium text-gray-300">Viaje</span>
+                                                <span className={`text-xs text-center font-medium ${selectedCategory === 'ride' ? 'text-[#FFD700]' : 'text-gray-300'}`}>Viaje</span>
                                             </button>
 
                                             <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
@@ -458,12 +483,19 @@ export default function PassengerHome() {
                                                 <span className="text-xs text-center font-medium text-gray-300">Reserva</span>
                                             </button>
 
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 relative">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedCategory('moto');
+                                                    setStep('input');
+                                                    toast.info("Moto seleccionada. ¿A dónde vas?");
+                                                }}
+                                                className={`flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 relative ${selectedCategory === 'moto' ? 'bg-[#FFD700]/10 border border-[#FFD700]' : ''}`}
+                                            >
                                                 <div className="absolute top-0 right-0 z-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-md">Promo</div>
                                                 <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
                                                     <img src="/assets/3d/moto.png" alt="Moto" className="w-full h-full object-cover scale-110" />
                                                 </div>
-                                                <span className="text-xs text-center font-medium text-gray-300">Moto</span>
+                                                <span className={`text-xs text-center font-medium ${selectedCategory === 'moto' ? 'text-[#FFD700]' : 'text-gray-300'}`}>Moto</span>
                                             </button>
 
                                             <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
