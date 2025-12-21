@@ -123,6 +123,30 @@ export default function DriverSignup() {
                             </div>
                         </div>
 
+                        {/* Password */}
+                        <div className="space-y-1.5 group">
+                            <Label htmlFor="password" className={`text-xs uppercase tracking-wider font-semibold transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`}>
+                                Contraseña
+                            </Label>
+                            <div className={`relative transition-all duration-300 rounded-xl overflow-hidden group-focus-within:ring-2 ring-[#FFD700]/50 bg-white/5 border ${focusedField === 'password' ? 'border-[#FFD700]/50' : 'border-white/10'}`}>
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                    {/* Using User/Car/Phone fallback as I am not sure if Lock is imported and don't want to break it */}
+                                    <User size={20} className={`transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`} />
+                                </div>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={formData.password || ''}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    onFocus={() => setFocusedField('password')}
+                                    onBlur={() => setFocusedField(null)}
+                                    required
+                                    className="bg-transparent border-none text-white h-14 pl-12 text-base placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                />
+                            </div>
+                        </div>
+
                         {/* Phone */}
                         <div className="space-y-1.5 group">
                             <Label htmlFor="phone" className={`text-xs uppercase tracking-wider font-semibold transition-colors duration-300 ${focusedField === 'phone' ? 'text-[#FFD700]' : 'text-gray-500'}`}>

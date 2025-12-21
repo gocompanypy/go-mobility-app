@@ -26,7 +26,7 @@ export default function PassengerSignup() {
 
         try {
             // Registro con Supabase (Auth + DB)
-            await goApp.auth.register(formData.phone, '123456', {
+            await goApp.auth.register(formData.phone, formData.password, {
                 role: 'passenger',
                 full_name: formData.fullName,
                 phone: formData.phone,
@@ -130,6 +130,37 @@ export default function PassengerSignup() {
                                     onBlur={() => setFocusedField(null)}
                                     pattern="09[0-9]{8}"
                                     title="Debe ser un número local que empiece con 09 y tenga 10 dígitos"
+                                    required
+                                    className="bg-transparent border-none text-white h-14 pl-12 text-base placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Password */}
+                        <div className="space-y-1.5 group">
+                            <Label htmlFor="password" className={`text-xs uppercase tracking-wider font-semibold transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`}>
+                                Contraseña
+                            </Label>
+                            <div className={`relative transition-all duration-300 rounded-xl overflow-hidden group-focus-within:ring-2 ring-[#FFD700]/50 bg-white/5 border ${focusedField === 'password' ? 'border-[#FFD700]/50' : 'border-white/10'}`}>
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                    {/* Using Phone icon as placeholder if Lock not available, but usually Lock is imported from lucide-react. 
+                                        Let's import Lock at top if not present, checking lines 1-10. 
+                                        Wait, I can't see the imports in this block. I'll stick to a generic icon or valid one.
+                                        Safe bet: re-use existing icon or just text. 
+                                        Actually, let's just use the 'User' icon or similar if Lock isn't guaranteed, 
+                                        but standard lucide-react has Lock. I will add it to imports in a separate edit if needed.
+                                        For now, I'll use Mail/Phone/User... let's use User as a fallback. 
+                                    */}
+                                    <User size={20} className={`transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`} />
+                                </div>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={formData.password || ''}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    onFocus={() => setFocusedField('password')}
+                                    onBlur={() => setFocusedField(null)}
                                     required
                                     className="bg-transparent border-none text-white h-14 pl-12 text-base placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
                                 />
