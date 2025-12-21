@@ -70,12 +70,14 @@ export default function PassengerHome() {
             setUser(currentUser);
 
             // Check for existing passenger profile
-            const passengers = await goApp.entities.Passenger.filter({ created_by: currentUser.email });
+            const passengers = await goApp.entities.Passenger.filter({ email: currentUser.email });
             if (passengers.length > 0) {
                 setPassenger(passengers[0]);
             } else {
                 // Create passenger profile
                 const newPassenger = await goApp.entities.Passenger.create({
+                    id: currentUser.id, // Ensure ID matches Auth ID
+                    email: currentUser.email,
                     phone: currentUser.phone || '',
                     first_name: currentUser.full_name?.split(' ')[0] || 'Usuario',
                     last_name: currentUser.full_name?.split(' ').slice(1).join(' ') || '',
@@ -84,8 +86,11 @@ export default function PassengerHome() {
             }
 
             // Check for active trip
+            // Need passenger ID first
+            const passengerId = passengers.length > 0 ? passengers[0].id : currentUser.id;
+
             const trips = await goApp.entities.Trip.filter({
-                created_by: currentUser.email,
+                passenger_id: passengerId,
                 status: ['searching', 'accepted', 'arrived', 'in_progress']
             });
             if (trips.length > 0) {
@@ -409,47 +414,60 @@ export default function PassengerHome() {
                                             <button
                                                 onClick={() => {
                                                     setStep('input');
-                                                    // Scroll to address inputs
                                                 }}
-                                                className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all gold-border"
-                                                style={{ background: 'linear-gradient(135deg, #0A0A0A, #000000)' }}
-                                                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.4)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+                                                className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95"
                                             >
-                                                <Car size={32} className="text-[#FFD700]" />
-                                                <span className="text-xs text-center">Viaje</span>
+                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-[#FFD700]/20 shadow-lg shadow-[#FFD700]/10">
+                                                    <img src="/assets/3d/ride.png" alt="Viaje" className="w-full h-full object-cover" />
+                                                </div>
+                                                <span className="text-xs text-center font-medium text-gray-300">Viaje</span>
                                             </button>
 
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
-                                                <Calendar size={32} className="text-gray-400" />
-                                                <span className="text-xs text-center">Reserva</span>
+                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
+                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
+                                                    <img src="/assets/3d/reserve.png" alt="Reserva" className="w-full h-full object-coverScale-110" />
+                                                </div>
+                                                <span className="text-xs text-center font-medium text-gray-300">Reserva</span>
                                             </button>
 
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50 relative" style={{ background: '#0A0A0A' }}>
-                                                <div className="absolute top-1 right-1 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded font-bold">Promo</div>
-                                                <Bike size={32} className="text-gray-400" />
-                                                <span className="text-xs text-center">Moto</span>
+                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 relative">
+                                                <div className="absolute top-0 right-0 z-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-md">Promo</div>
+                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
+                                                    <img src="/assets/3d/moto.png" alt="Moto" className="w-full h-full object-cover scale-110" />
+                                                </div>
+                                                <span className="text-xs text-center font-medium text-gray-300">Moto</span>
                                             </button>
 
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
-                                                <Key size={32} className="text-gray-400" />
-                                                <span className="text-xs text-center">Vehículo alquiler</span>
+                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
+                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
+                                                    <img src="/assets/3d/rent.png" alt="Alquiler" className="w-full h-full object-cover p-1" />
+                                                </div>
+                                                <span className="text-xs text-center font-medium text-gray-300">Alquiler</span>
                                             </button>
 
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50 relative" style={{ background: '#0A0A0A' }}>
-                                                <div className="absolute top-1 right-1 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded font-bold">Promo</div>
-                                                <Truck size={32} className="text-[#FFD700]" />
-                                                <span className="text-xs text-center">Fletes</span>
+                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 relative">
+                                                <div className="absolute top-0 right-0 z-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-md">Promo</div>
+                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
+                                                    <img src="/assets/3d/freight.png" alt="Fletes" className="w-full h-full object-cover scale-110" />
+                                                </div>
+                                                <span className="text-xs text-center font-medium text-gray-300">Fletes</span>
                                             </button>
 
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
-                                                <Package size={32} className="text-gray-400" />
-                                                <span className="text-xs text-center">Paquetería</span>
+                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
+                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
+                                                    <img src="/assets/3d/package.png" alt="Paquetería" className="w-full h-full object-cover scale-90" />
+                                                </div>
+                                                <span className="text-xs text-center font-medium text-gray-300">Paquetería</span>
                                             </button>
 
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all border border-[#1A1A1A] hover:border-[#FFD700]/50" style={{ background: '#0A0A0A' }}>
-                                                <UtensilsCrossed size={32} className="text-gray-400" />
-                                                <span className="text-xs text-center">Comida</span>
+                                            <button
+                                                onClick={() => setActiveTab('eats')}
+                                                className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95"
+                                            >
+                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
+                                                    <img src="/assets/3d/food.png" alt="Comida" className="w-full h-full object-cover scale-110" />
+                                                </div>
+                                                <span className="text-xs text-center font-medium text-gray-300">Comida</span>
                                             </button>
                                         </div>
                                     </div>

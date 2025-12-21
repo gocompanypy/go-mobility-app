@@ -6,6 +6,7 @@ import Layout from './Layout';
 
 // Public Pages
 import Home from './Pages/Home';
+import DemoImages from './Pages/DemoImages';
 
 // Passenger Pages
 import PassengerHome from './Pages/PassengerHome';
@@ -28,6 +29,7 @@ import DriverDocuments from './Pages/DriverDocuments';
 import DriverSuccess from './Pages/DriverSuccess';
 import DriverHome from './Pages/DriverHome';
 import DriverEarnings from './Pages/DriverEarnings';
+import DriverDigitalId from './Pages/DriverDigitalId';
 
 // Admin Pages
 import AdminDashboard from './Pages/AdminDashboard';
@@ -35,9 +37,17 @@ import AdminDrivers from './Pages/AdminDrivers';
 import AdminPassengers from './Pages/AdminPassengers';
 import AdminTrips from './Pages/AdminTrips';
 import AdminPricing from './Pages/AdminPricing';
+import AdminGeofencing from './Pages/AdminGeofencing';
+import AdminFleet from './Pages/AdminFleet';
+import AdminFinance from './Pages/AdminFinance';
+import AdminLogin from './Pages/AdminLogin';
+import AdminMarketing from './Pages/AdminMarketing';
+import AdminSecurity from './Pages/AdminSecurity';
+import AdminLayout from './components/layouts/AdminLayout';
 
 // Components
 import UserNotRegisteredError from './components/UserNotRegisteredError';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
     return (
@@ -45,6 +55,7 @@ export default function App() {
             <Routes>
                 {/* Public Routes without Layout */}
                 <Route path="/" element={<Home />} />
+                <Route path="/demo-images" element={<DemoImages />} />
 
                 {/* Passenger Auth Flow */}
                 <Route path="/passenger/welcome" element={<PassengerWelcome />} />
@@ -74,14 +85,30 @@ export default function App() {
                 {/* Driver Routes (Standalone Layout) */}
                 <Route path="/driver/home" element={<DriverHome />} />
                 <Route path="/driver/earnings" element={<DriverEarnings />} />
+                <Route path="/driver/digital-id" element={<DriverDigitalId />} />
                 <Route path="/driver/history" element={<DriverEarnings />} /> {/* Fallback if page doesn't exist yet */}
 
                 {/* Admin Routes (Standalone Layout) */}
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/drivers" element={<AdminDrivers />} />
-                <Route path="/admin/passengers" element={<AdminPassengers />} />
-                <Route path="/admin/trips" element={<AdminTrips />} />
-                <Route path="/admin/pricing" element={<AdminPricing />} />
+                {/* Admin Routes with Layout */}
+                <Route element={
+                    <ProtectedRoute allowedRoles={['admin', 'passenger']}>
+                        <AdminLayout />
+                    </ProtectedRoute>
+                }>
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    <Route path="/admin/drivers" element={<AdminDrivers />} />
+                    <Route path="/admin/passengers" element={<AdminPassengers />} />
+                    <Route path="/admin/trips" element={<AdminTrips />} />
+                    <Route path="/admin/pricing" element={<AdminPricing />} />
+                    <Route path="/admin/geofencing" element={<AdminGeofencing />} />
+                    <Route path="/admin/fleet" element={<AdminFleet />} />
+                    <Route path="/admin/finance" element={<AdminFinance />} />
+                    <Route path="/admin/marketing" element={<AdminMarketing />} />
+                    <Route path="/admin/security" element={<AdminSecurity />} />
+                </Route>
+
+                {/* Admin Login (No Layout) */}
+                <Route path="/admin" element={<AdminLogin />} />
 
                 {/* Protected Routes with Layout (Empty for now, but kept for future use) */}
                 <Route element={<Layout />}>

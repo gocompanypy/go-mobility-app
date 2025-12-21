@@ -19,13 +19,38 @@ export default function PassengerLogin() {
         e.preventDefault();
         setIsLoading(true);
 
+        const loginPromise = goApp.auth.login(phone);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("TIMEOUT")), 15000) // 15 seconds timeout
+        );
+
         try {
-            const { user, profile } = await goApp.auth.login(phone);
+            const { user, profile } = await Promise.race([loginPromise, timeoutPromise]);
             toast.success(`¡Hola de nuevo, ${profile?.full_name || 'Pasajero'}! 🚕`);
             navigate(createPageUrl('PassengerHome'));
         } catch (error) {
             console.error(error);
-            toast.error(error.message || 'Error al iniciar sesión');
+
+            if (error.message === "TIMEOUT") {
+                toast.error("Problemas de conexión", {
+                    description: "El servidor está tardando mucho en responder. Verifica tu conexión a internet e intenta nuevamente.",
+                    duration: 6000,
+                });
+            } else if (error.message && error.message.includes("no está registrado")) {
+                toast("Número no corresponde", {
+                    description: "El número ingresado no corresponde a un usuario registrado. ¿Quieres crear una cuenta?",
+                    action: {
+                        label: "Crear Cuenta",
+                        onClick: () => navigate(createPageUrl('PassengerSignup'), { state: { phone } }),
+                    },
+                    duration: 8000,
+                    className: "border-l-4 border-yellow-400 bg-neutral-900 text-white"
+                });
+            } else {
+                toast.error("Error al iniciar sesión", {
+                    description: error.message || "Ocurrió un error inesperado."
+                });
+            }
         } finally {
             setIsLoading(false);
         }

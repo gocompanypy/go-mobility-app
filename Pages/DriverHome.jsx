@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl, formatCurrency } from '@/lib/utils';
-import { Power, Menu, DollarSign, Star, Navigation, MapPin, ChevronRight, TrendingUp, Coffee, Bell } from 'lucide-react';
+import { Power, Menu, DollarSign, Star, Navigation, MapPin, ChevronRight, TrendingUp, Coffee, Bell, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import Logo from '@/components/go/Logo';
@@ -54,7 +54,7 @@ export default function DriverHome() {
       setUser(currentUser);
 
       // Check for existing driver profile
-      const drivers = await goApp.entities.Driver.filter({ created_by: currentUser.email });
+      const drivers = await goApp.entities.Driver.filter({ email: currentUser.email });
       if (drivers.length > 0) {
         setDriver(drivers[0]);
         // setIsOnline(drivers[0].is_online); // Optional: Remember state
@@ -407,6 +407,18 @@ export default function DriverHome() {
                   <TrendingUp size={20} />
                 </div>
                 <span className="font-medium">Historial de viajes</span>
+              </span>
+              <ChevronRight size={18} className="text-gray-600 group-hover:text-white" />
+            </button>
+            <button
+              onClick={() => navigate(createPageUrl('DriverDigitalId'))}
+              className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-all group"
+            >
+              <span className="flex items-center gap-4 text-gray-300 group-hover:text-[#FFD700] transition-colors">
+                <div className="p-2 bg-white/5 rounded-lg group-hover:bg-[#FFD700]/20 transition-colors">
+                  <CreditCard size={20} />
+                </div>
+                <span className="font-medium">Credencial Digital</span>
               </span>
               <ChevronRight size={18} className="text-gray-600 group-hover:text-white" />
             </button>

@@ -108,19 +108,7 @@ export default function AdminPassengers() {
     return (
         <div className="min-h-screen bg-[#0F0F1A] text-white">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-[#0F0F1A]/90 backdrop-blur-lg border-b border-[#2D2D44]">
-                <div className="flex items-center gap-4 px-6 py-4">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate(createPageUrl('AdminDashboard'))}
-                        className="text-white"
-                    >
-                        <ArrowLeft size={24} />
-                    </Button>
-                    <h1 className="text-xl font-bold">Gestión de Pasajeros</h1>
-                </div>
-            </header>
+
 
             <main className="p-6">
                 {/* Stats */}
@@ -319,8 +307,8 @@ export default function AdminPassengers() {
                                                                     {trip.completed_at ? format(new Date(trip.completed_at), "d MMMM, HH:mm", { locale: es }) : 'Fecha desconocida'}
                                                                 </span>
                                                                 <Badge variant="outline" className={`text-xs ${trip.status === 'completed' ? 'border-[#00D4B1] text-[#00D4B1]' :
-                                                                        trip.status === 'cancelled' ? 'border-red-500 text-red-500' :
-                                                                            'border-yellow-500 text-yellow-500'
+                                                                    trip.status === 'cancelled' ? 'border-red-500 text-red-500' :
+                                                                        'border-yellow-500 text-yellow-500'
                                                                     }`}>
                                                                     {trip.status === 'completed' ? 'Completado' : trip.status}
                                                                 </Badge>

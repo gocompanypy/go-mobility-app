@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import { ArrowLeft, User, Phone, Mail, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,12 @@ import { toast } from 'sonner';
 
 export default function PassengerSignup() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [focusedField, setFocusedField] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         fullName: '',
-        phone: '',
+        phone: location.state?.phone || '',
         email: ''
     });
 

@@ -22,6 +22,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { theme } from '@/components/go/theme';
+import PriceSimulator from '@/components/admin/PriceSimulator';
 
 export default function AdminPricing() {
     const navigate = useNavigate();
@@ -239,6 +240,9 @@ export default function AdminPricing() {
                         </Card>
                     )}
                 </div>
+
+                {/* Simulator */}
+                <PriceSimulator configs={priceConfigs} />
             </main>
 
             {/* Edit/Create Modal */}

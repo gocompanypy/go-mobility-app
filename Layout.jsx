@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Menu, Home, Car, User, Settings, LogOut, LayoutDashboard, Crown, Archive, HelpCircle } from 'lucide-react';
+import { Menu, Home, Car, User, Settings, LogOut, LayoutDashboard, Crown, Archive, HelpCircle, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/go/Logo';
@@ -29,6 +29,7 @@ export default function Layout() {
         ...(isAdmin ? [
             { icon: User, label: 'Conductores', path: '/admin/drivers' },
             { icon: Car, label: 'Viajes', path: '/admin/trips' },
+            { icon: DollarSign, label: 'Finanzas', path: '/admin/finance' },
             { icon: Settings, label: 'Precios', path: '/admin/pricing' },
         ] : []),
         { icon: Settings, label: 'Configuración', path: '/settings' },

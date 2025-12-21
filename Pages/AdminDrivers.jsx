@@ -32,6 +32,7 @@ import {
 import { format } from 'date-fns';
 import Logo from '@/components/go/Logo';
 import { theme } from '@/components/go/theme';
+import DocumentVerifier from '@/components/admin/DocumentVerifier';
 
 const STATUS_CONFIG = {
     pending: { label: 'Pendiente', color: '#FFB800', icon: Clock },
@@ -60,7 +61,7 @@ export default function AdminDrivers() {
     const loadDrivers = async () => {
         try {
             const data = await goApp.entities.Driver.list('-created_date');
-            setDrivers(data);
+            setDrivers(data || []);
         } catch (error) {
             console.error('Error loading drivers:', error);
         }
@@ -87,34 +88,41 @@ export default function AdminDrivers() {
         setFilteredDrivers(result);
     };
 
-    const updateDriverStatus = async (driverId, newStatus) => {
+    const updateDriverStatus = async (driverId, newStatus, reason = null) => {
         try {
-            await goApp.entities.Driver.update(driverId, { status: newStatus });
+            await goApp.entities.Driver.update(driverId, {
+                status: newStatus,
+                status_reason: reason // Store reason if provided (e.g. for rejection)
+            });
+
             setDrivers(drivers.map(d =>
                 d.id === driverId ? { ...d, status: newStatus } : d
             ));
+
+            if (reason) {
+                console.log(`Driver ${driverId} status updated to ${newStatus}. Reason: ${reason}`);
+                // In a real app, we would trigger an email/notification here
+            }
+
             setSelectedDriver(null);
+            setIsVerifierOpen(false); // Close verifier if open
         } catch (error) {
             console.error('Error updating driver:', error);
         }
     };
 
+    // Document Verifier State
+    const [isVerifierOpen, setIsVerifierOpen] = useState(false);
+    const [driverToVerify, setDriverToVerify] = useState(null);
+
+    const openVerifier = (driver) => {
+        setDriverToVerify(driver);
+        setIsVerifierOpen(true);
+    };
+
     return (
         <div className="min-h-screen bg-[#0F0F1A] text-white">
-            {/* Header */}
-            <header className="sticky top-0 z-40 bg-[#0F0F1A]/90 backdrop-blur-lg border-b border-[#2D2D44]">
-                <div className="flex items-center gap-4 px-6 py-4">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate(createPageUrl('AdminDashboard'))}
-                        className="text-white"
-                    >
-                        <ArrowLeft size={24} />
-                    </Button>
-                    <h1 className="text-xl font-bold">Gestión de Conductores</h1>
-                </div>
-            </header>
+
 
             <main className="p-6">
                 {/* Stats */}
@@ -196,7 +204,7 @@ export default function AdminDrivers() {
                                 <tbody>
                                     {filteredDrivers.map((driver) => {
                                         const statusConfig = STATUS_CONFIG[driver.status] || STATUS_CONFIG.pending;
-                                        const vehicleConfig = theme.vehicleTypes[driver.vehicle_type] || {};
+                                        const vehicleConfig = (theme.vehicleTypes && theme.vehicleTypes[driver.vehicle_type]) || {};
 
                                         return (
                                             <tr key={driver.id} className="border-b border-[#2D2D44] hover:bg-[#252538]">
@@ -217,15 +225,19 @@ export default function AdminDrivers() {
                                                     <p className="text-white">{driver.vehicle_make} {driver.vehicle_model}</p>
                                                     <p className="text-[#00D4B1] text-sm font-mono">{driver.vehicle_plate}</p>
                                                 </td>
-                                                <td className="py-4 px-6">
-                                                    <Badge
-                                                        style={{
-                                                            backgroundColor: `${statusConfig.color}20`,
-                                                            color: statusConfig.color
-                                                        }}
-                                                    >
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[${statusConfig.color}]/10 text-[${statusConfig.color}]`} style={{ color: statusConfig.color, backgroundColor: `${statusConfig.color}20` }}>
+                                                        {statusConfig.icon && <statusConfig.icon size={12} className="mr-1 self-center" />}
                                                         {statusConfig.label}
-                                                    </Badge>
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className={`text-sm font-bold ${driver.total_earnings >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                        Gs. {(driver.total_earnings || 0).toLocaleString()}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {driver.total_earnings >= 0 ? 'A favor' : 'Deuda'}
+                                                    </div>
                                                 </td>
                                                 <td className="py-4 px-6">
                                                     <div className="flex items-center gap-1 text-yellow-400">
@@ -237,10 +249,23 @@ export default function AdminDrivers() {
                                                 <td className="py-4 px-6">
                                                     <div className={`w-3 h-3 rounded-full ${driver.is_online ? 'bg-green-400' : 'bg-gray-500'}`} />
                                                 </td>
-                                                <td className="py-4 px-6">
+                                                <td className="py-4 px-6 flex items-center gap-2">
+                                                    {driver.status === 'pending' && (
+                                                        <>
+                                                            <Button
+                                                                size="sm"
+                                                                className="h-8 bg-[#00D4B1]/20 text-[#00D4B1] hover:bg-[#00D4B1] hover:text-black mr-2"
+                                                                onClick={() => openVerifier(driver)}
+                                                                title="Verificar Documentos"
+                                                            >
+                                                                <Eye size={16} className="mr-1" />
+                                                                Verificar
+                                                            </Button>
+                                                        </>
+                                                    )}
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
                                                                 <MoreVertical size={18} />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -252,15 +277,14 @@ export default function AdminDrivers() {
                                                                 <Eye size={16} className="mr-2" />
                                                                 Ver detalles
                                                             </DropdownMenuItem>
-                                                            {driver.status === 'pending' && (
-                                                                <DropdownMenuItem
-                                                                    className="text-[#00D4B1]"
-                                                                    onClick={() => updateDriverStatus(driver.id, 'approved')}
-                                                                >
-                                                                    <CheckCircle size={16} className="mr-2" />
-                                                                    Aprobar
-                                                                </DropdownMenuItem>
-                                                            )}
+                                                            <DropdownMenuItem
+                                                                className="text-white"
+                                                                onClick={() => openVerifier(driver)}
+                                                            >
+                                                                <CheckCircle size={16} className="mr-2" />
+                                                                Verificar Docs
+                                                            </DropdownMenuItem>
+                                                            {/* Dropdown items for other statuses */}
                                                             {driver.status === 'approved' && (
                                                                 <DropdownMenuItem
                                                                     className="text-[#F59E0B]"
@@ -299,6 +323,15 @@ export default function AdminDrivers() {
                 </Card>
             </main>
 
+            {/* Document Verifier Modal */}
+            <DocumentVerifier
+                driver={driverToVerify}
+                isOpen={isVerifierOpen}
+                onClose={() => setIsVerifierOpen(false)}
+                onApprove={(id) => updateDriverStatus(id, 'approved')}
+                onReject={(id, reason) => updateDriverStatus(id, 'blocked', reason)}
+            />
+
             {/* Driver Detail Modal */}
             <Dialog open={!!selectedDriver} onOpenChange={() => setSelectedDriver(null)}>
                 <DialogContent className="bg-[#1A1A2E] border-[#2D2D44] text-white max-w-2xl">
@@ -323,7 +356,7 @@ export default function AdminDrivers() {
                                 <div>
                                     <p className="text-gray-400 text-sm">Vehículo</p>
                                     <p className="text-white">
-                                        {selectedDriver.vehicle_make} {selectedDriver.vehicle_model} ({selectedDriver.vehicle_year})
+                                        {selectedDriver.vehicle_make} {selectedDriver.vehicle_model} ({selectedDriver.vehicle_year}) - {selectedDriver.vehicle_color}
                                     </p>
                                 </div>
                                 <div>
@@ -333,11 +366,14 @@ export default function AdminDrivers() {
                                 <div>
                                     <p className="text-gray-400 text-sm">Licencia</p>
                                     <p className="text-white">{selectedDriver.license_number}</p>
+                                    {selectedDriver.license_expiry && (
+                                        <p className="text-xs text-gray-500">Vence: {selectedDriver.license_expiry}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <p className="text-gray-400 text-sm">Fecha de registro</p>
                                     <p className="text-white">
-                                        {format(new Date(selectedDriver.created_date), 'dd/MM/yyyy')}
+                                        {selectedDriver.created_at ? format(new Date(selectedDriver.created_at), 'dd/MM/yyyy') : '-'}
                                     </p>
                                 </div>
                             </div>
