@@ -67,6 +67,12 @@ export default function PassengerHome() {
     const loadUserData = async () => {
         try {
             const currentUser = await goApp.auth.me();
+
+            if (!currentUser) {
+                navigate('/passenger/login');
+                return;
+            }
+
             setUser(currentUser);
 
             // Check for existing passenger profile
