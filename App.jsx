@@ -49,6 +49,8 @@ import AdminLayout from './components/layouts/AdminLayout';
 import UserNotRegisteredError from './components/UserNotRegisteredError';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import { Toaster } from 'sonner';
+
 export default function App() {
     return (
         <BrowserRouter>
@@ -118,6 +120,7 @@ export default function App() {
                 {/* Catch all - Redirect to Home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            <Toaster position="top-center" richColors />
         </BrowserRouter>
     );
 }
