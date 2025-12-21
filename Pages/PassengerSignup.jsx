@@ -42,11 +42,12 @@ export default function PassengerSignup() {
 
         } catch (error) {
             console.error(error);
-            if (error.message.includes('already registered')) {
-                toast.error('Este número ya está registrado. Inicia sesión.');
+            // Supabase returns "User already registered" within the error message for duplicates
+            if (error.message.includes('already registered') || error.message.includes('unique constraint')) {
+                toast.error('Este número o correo ya está registrado. Por favor, inicia sesión.');
                 navigate(createPageUrl('PassengerLogin'));
             } else {
-                toast.error('Error al registrar: ' + error.message);
+                toast.error('Error al registrar: ' + (error.message || 'Inténtalo de nuevo.'));
             }
         } finally {
             setIsSubmitting(false);

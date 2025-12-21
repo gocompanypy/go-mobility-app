@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import { goApp } from '@/api/goAppClient';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
     ArrowLeft,
@@ -127,9 +128,17 @@ export default function DriverDocuments() {
         } catch (error) {
             console.error(error);
             setSubmitting(false);
-            // We need to show error. Toast is not imported? 
-            // I will use alert for now or try to import toast.
-            alert("Error al registrar: " + error.message);
+
+            if (error.message.includes('already registered') || error.message.includes('unique constraint')) {
+                toast.error('Este número o correo ya está registrado. Por favor, inicia sesión.');
+                // Optional: navigate to login? 
+                // navigate(createPageUrl('DriverLogin'));
+                // Maybe better just let them know. But consistency with passenger suggests redirect or clear message.
+                // The user asked for a message.
+                setTimeout(() => navigate(createPageUrl('DriverLogin')), 2000);
+            } else {
+                toast.error("Error al registrar: " + (error.message || 'Inténtalo de nuevo.'));
+            }
         }
     };
 
