@@ -334,12 +334,12 @@ export default function PassengerHome() {
                             <div className="py-2">
                                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-4">Seguridad</h3>
                                 <button
-                                    onClick={() => toast.info('Configuración de contactos de confianza')}
+                                    onClick={() => navigate(createPageUrl('PassengerTrustedContacts'))}
                                     className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
                                 >
                                     <span className="flex items-center gap-3">
                                         <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-                                            <User size={14} className="text-blue-400" />
+                                            <Shield size={14} className="text-blue-400" />
                                         </div>
                                         Contactos de confianza
                                     </span>
@@ -363,16 +363,6 @@ export default function PassengerHome() {
                                 <span className="flex items-center gap-3">
                                     <Tag size={20} className="text-[#FFD700]" />
                                     Promociones
-                                </span>
-                                <ChevronRight size={18} className="text-gray-400" />
-                            </button>
-                            <button
-                                onClick={() => navigate(createPageUrl('PassengerPayments'))}
-                                className="w-full flex items-center justify-between p-4 hover:bg-[#252538] rounded-xl transition-colors"
-                            >
-                                <span className="flex items-center gap-3">
-                                    <CreditCard size={20} className="text-gray-400" />
-                                    Métodos de pago
                                 </span>
                                 <ChevronRight size={18} className="text-gray-400" />
                             </button>
