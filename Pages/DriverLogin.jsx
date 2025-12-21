@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 export default function DriverLogin() {
     const navigate = useNavigate();
     const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
     const [focusedField, setFocusedField] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -20,7 +21,7 @@ export default function DriverLogin() {
         setIsLoading(true);
 
         try {
-            const { user, profile } = await goApp.auth.login(phone);
+            const { user, profile } = await goApp.auth.login(phone, password);
             toast.success(`¡Bienvenido de nuevo, ${profile?.first_name || 'Conductor'}! 👋`);
             navigate(createPageUrl('DriverHome'));
         } catch (error) {
@@ -57,7 +58,7 @@ export default function DriverLogin() {
                         <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-white via-[#FFD700] to-[#FFA500] bg-clip-text text-transparent inline-block">
                             Bienvenido de nuevo
                         </h1>
-                        <p className="text-gray-400 text-sm">Ingresa tu número para continuar</p>
+                        <p className="text-gray-400 text-sm">Ingresa tus credenciales para continuar</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -84,6 +85,29 @@ export default function DriverLogin() {
                                     onBlur={() => setFocusedField(null)}
                                     pattern="09[0-9]{8}"
                                     title="Debe ser un número local que empiece con 09 y tenga 10 dígitos"
+                                    required
+                                    className="bg-transparent border-none text-white h-14 pl-12 text-lg placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0 tracking-wide"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5 group">
+                            <Label htmlFor="password" className={`text-xs uppercase tracking-wider font-semibold transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`}>
+                                Contraseña
+                            </Label>
+                            <div className={`relative transition-all duration-300 rounded-xl overflow-hidden group-focus-within:ring-2 ring-[#FFD700]/50 bg-white/5 border ${focusedField === 'password' ? 'border-[#FFD700]/50' : 'border-white/10'}`}>
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <Phone size={20} className={`transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`} />
+                                    {/* Icon reuse for now, ideally Lock icon */}
+                                </div>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    onFocus={() => setFocusedField('password')}
+                                    onBlur={() => setFocusedField(null)}
                                     required
                                     className="bg-transparent border-none text-white h-14 pl-12 text-lg placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0 tracking-wide"
                                 />

@@ -8,27 +8,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const goApp = {
     auth: {
-        login: async (phone) => {
-            // Simulación de Login con Teléfono
-            // En Supabase real, esto requeriría una Function o Auth OTP (SMS)
-            // Para la demo, usamos el email generado: [telefono]@goapp.com + Pass: 123456
+        login: async (phone, password) => {
+            // Generar email para Auth (Supabase Auth requiere email por defecto)
             const email = `${phone.replace(/\D/g, '')}@goapp.com`;
-            const password = '123456';
 
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
+
             if (error) {
                 console.error("Login failed:", error);
-
-                // Si falla el login simulado, asumimos que es porque no existe el usuario
-                // (ya que el password está hardcodeado a '123456')
-                if (error.message === "Invalid login credentials" || error.message.includes("Invalid")) {
-                    throw new Error("Este número no está registrado. Por favor, crea una cuenta.");
+                if (error.message.includes("Invalid login credentials")) {
+                    throw new Error("Credenciales incorrectas. Verifica tu número y contraseña.");
                 }
-
-                throw new Error("Error al verificar la cuenta. Intente nuevamente.");
+                throw error;
             }
 
             // Obtener perfil adicional
@@ -43,16 +37,21 @@ export const goApp = {
                 role = 'passenger';
             }
 
+            // Si aun asi no tiene perfil (ej: usuario creado manualmente en Auth pero sin tabla),
+            // podemos retornar un role 'guest' o lanzar error.
+            if (!profile) {
+                // Fallback temporal si no se creó la entrada en tablas publicas
+                role = 'unknown';
+            }
+
             return { user: data.user, profile, role };
         },
         register: async (phone, password, metadata = {}) => {
-            // Para la demo, usamos el email generado: [telefono]@goapp.com + Pass: 123456
             const email = `${phone.replace(/\D/g, '')}@goapp.com`;
-            const finalPassword = password || '123456'; // Default pass if not provided
 
             const { data, error } = await supabase.auth.signUp({
                 email,
-                password: finalPassword,
+                password: password,
                 options: {
                     data: metadata, // full_name, role, etc.
                 }
@@ -60,42 +59,34 @@ export const goApp = {
 
             if (error) throw error;
 
-            // 2. Crear perfil público (según role)
-            // Esto es crucial porque Supabase no lo hace automático sin Triggers (en este setup simple)
-            if (metadata.role === 'driver') {
-                const { error: profileError } = await supabase.from('drivers').insert([{
-                    id: data.user.id,
-                    email: email,
-                    phone: phone,
-                    first_name: metadata.first_name || '',
-                    last_name: metadata.last_name || '',
-                    vehicle_type: metadata.vehicle_type || 'economy',
-                    vehicle_color: metadata.vehicle_color || '', // Ensure color is saved
-                    status: 'pending', // Explicitly set status
-                    license_number: metadata.license_number || '',
-                    license_expiry: metadata.license_expiry || '',
-                    // Defaults para nuevos drivers
-                    is_online: false,
-                    is_available: true,
-                    rating: 5.0,
-                    total_trips: 0,
-                    documents: metadata.documents || {
-                        license_front: '',
-                        license_back: '',
-                        id_card_front: '',
-                        insurance: ''
-                    }
-                }]);
-                if (profileError) console.error("Error creating driver profile:", profileError);
-            } else if (metadata.role === 'passenger') {
-                const { error: profileError } = await supabase.from('passengers').insert([{
-                    id: data.user.id,
-                    email: metadata.email || email, // Use provided email if available, else generated
-                    phone: phone,
-                    full_name: metadata.full_name || '',
-                    rating: 5.0
-                }]);
-                if (profileError) console.error("Error creating passenger profile:", profileError);
+            if (data.user) {
+                // 2. Crear perfil público (según role)
+                if (metadata.role === 'driver') {
+                    const { error: profileError } = await supabase.from('drivers').insert([{
+                        id: data.user.id,
+                        email: email,
+                        phone: phone,
+                        first_name: metadata.first_name || '',
+                        last_name: metadata.last_name || '',
+                        vehicle_type: metadata.vehicle_type || 'economy',
+                        vehicle_color: metadata.vehicle_color || '',
+                        status: 'pending',
+                        is_online: false,
+                        is_available: true,
+                        rating: 5.0,
+                        total_trips: 0
+                    }]);
+                    if (profileError) console.error("Error creating driver profile:", profileError);
+                } else if (metadata.role === 'passenger') {
+                    const { error: profileError } = await supabase.from('passengers').insert([{
+                        id: data.user.id,
+                        email: metadata.email || email,
+                        phone: phone,
+                        full_name: metadata.full_name || '',
+                        rating: 5.0
+                    }]);
+                    if (profileError) console.error("Error creating passenger profile:", profileError);
+                }
             }
 
             return data;

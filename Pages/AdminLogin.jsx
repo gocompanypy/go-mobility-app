@@ -5,17 +5,44 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock } from 'lucide-react';
 
+import { supabase } from '@/api/goAppClient';
+import { toast } from 'sonner';
+
 export default function AdminLogin() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // Mock Login - in real app use Supabase Auth
-        if (email && password) {
-            localStorage.setItem('go_user', JSON.stringify({ email, role: 'admin' }));
-            navigate('/admin/dashboard');
+        setIsLoading(true);
+
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            if (data.user) {
+                // Determine if user is admin. For now, we assume anyone who can login here 
+                // and probably has specific email domain or metadata is admin. 
+                // For this demo, we just allow the login if Auth succeeds.
+                localStorage.setItem('go_user', JSON.stringify({ email: data.user.email, role: 'admin', id: data.user.id }));
+                toast.success("Sesión iniciada correctamente");
+                navigate('/admin/dashboard');
+            }
+        } catch (error) {
+            console.error("Login Error:", error);
+            toast.error("Error al iniciar sesión", {
+                description: error.message === "Invalid login credentials"
+                    ? "Credenciales inválidas"
+                    : error.message
+            });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -50,9 +77,10 @@ export default function AdminLogin() {
                         </div>
                         <Button
                             type="submit"
+                            disabled={isLoading}
                             className="w-full bg-[#00D4B1] hover:bg-[#00B89C] text-black font-bold"
                         >
-                            Iniciar Sesión
+                            {isLoading ? "Cargando..." : "Iniciar Sesión"}
                         </Button>
                     </form>
                 </CardContent>
