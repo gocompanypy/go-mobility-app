@@ -91,33 +91,9 @@ const LiveMap = ({
     useEffect(() => {
         if (nearbyDrivers.length > 0) {
             setSimulatedDrivers(nearbyDrivers);
-            return;
+        } else {
+            setSimulatedDrivers([]);
         }
-
-        // Generate fake drivers around center
-        const centerLat = pickupLat || -25.2867;
-        const centerLng = pickupLng || -57.6470;
-
-        const drivers = Array(5).fill(0).map((_, i) => ({
-            id: i,
-            lat: centerLat + (Math.random() - 0.5) * 0.02,
-            lng: centerLng + (Math.random() - 0.5) * 0.02,
-            rotation: Math.random() * 360
-        }));
-
-        setSimulatedDrivers(drivers);
-
-        // Animate them
-        const interval = setInterval(() => {
-            setSimulatedDrivers(prev => prev.map(d => ({
-                ...d,
-                lat: d.lat + (Math.random() - 0.5) * 0.001,
-                lng: d.lng + (Math.random() - 0.5) * 0.001,
-                rotation: d.rotation + (Math.random() - 0.5) * 20
-            })));
-        }, 2000);
-
-        return () => clearInterval(interval);
     }, [pickupLat, pickupLng, nearbyDrivers]);
 
     return (
