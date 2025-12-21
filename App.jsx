@@ -121,7 +121,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <Toaster
-                position="top-right"
+                position="top-center"
                 duration={4000}
                 theme="dark"
                 toastOptions={{
