@@ -28,11 +28,14 @@ export default function PassengerLogin() {
             console.error(error);
 
             // Check for both English (Supabase default) and Spanish (Custom) error messages
-            const isAuthError = error.message && (
-                error.message.includes("Credenciales incorrectas") ||
-                error.message.includes("Invalid login credentials") ||
-                error.message.includes("no está registrado")
-            );
+            // Also check for "invalid_credentials" code or common patterns
+            const errorMessage = error.message?.toLowerCase() || '';
+            const isAuthError =
+                errorMessage.includes("credenciales incorrectas") ||
+                errorMessage.includes("invalid login credentials") ||
+                errorMessage.includes("invalid_credentials") ||
+                errorMessage.includes("no está registrado") ||
+                errorMessage.includes("user not found");
 
             if (isAuthError) {
                 toast("Problema de inicio de sesión", {

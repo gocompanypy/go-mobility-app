@@ -27,10 +27,12 @@ export default function DriverLogin() {
         } catch (error) {
             console.error(error);
             // Customizable error handling for drivers
-            const isAuthError = error.message && (
-                error.message.includes("Credenciales incorrectas") ||
-                error.message.includes("Invalid login credentials")
-            );
+            const errorMessage = error.message?.toLowerCase() || '';
+            const isAuthError =
+                errorMessage.includes("credenciales incorrectas") ||
+                errorMessage.includes("invalid login credentials") ||
+                errorMessage.includes("invalid_credentials") ||
+                errorMessage.includes("user not found");
 
             if (isAuthError) {
                 toast("No pudimos ingresar", {

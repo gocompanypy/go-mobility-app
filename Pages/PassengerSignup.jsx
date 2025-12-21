@@ -44,8 +44,13 @@ export default function PassengerSignup() {
             console.error(error);
             // Supabase returns "User already registered" within the error message for duplicates
             if (error.message.includes('already registered') || error.message.includes('unique constraint')) {
-                toast.error('Este número o correo ya está registrado. Por favor, inicia sesión.');
-                navigate(createPageUrl('PassengerLogin'));
+                toast.error('Este número o correo ya está registrado. Por favor, inicia sesión.', {
+                    duration: 4000, // Make sure it stays long enough
+                });
+                // Delay navigation to let the user read the message
+                setTimeout(() => {
+                    navigate(createPageUrl('PassengerLogin'));
+                }, 2500);
             } else {
                 toast.error('Error al registrar: ' + (error.message || 'Inténtalo de nuevo.'));
             }
