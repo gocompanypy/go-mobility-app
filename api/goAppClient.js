@@ -4,7 +4,38 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Robust initialization to prevent crash if .env is missing keys
+let supabaseInstance;
+if (supabaseUrl && supabaseAnonKey) {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+    console.error("⚠️ FATAL: Supabase environment variables are missing! Application will not fetch data.");
+    // Mock minimal client to prevent runtime crash
+    supabaseInstance = {
+        auth: {
+            getUser: async () => ({ data: { user: null }, error: { message: "Missing Supabase Config" } }),
+            signInWithPassword: async () => ({ error: { message: "Missing Supabase Config" } }),
+            signUp: async () => ({ error: { message: "Missing Supabase Config" } }),
+            signOut: async () => ({ error: null }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+        },
+        from: () => ({
+            select: () => ({
+                eq: () => ({
+                    single: async () => ({ data: null, error: { message: "Missing Supabase Config" } }),
+                    order: async () => ({ data: [], error: { message: "Missing Supabase Config" } })
+                }),
+                order: () => ({ data: [], error: { message: "Missing Supabase Config" } }),
+                insert: async () => ({ error: { message: "Missing Supabase Config" } }),
+                update: async () => ({ error: { message: "Missing Supabase Config" } }),
+                delete: async () => ({ error: { message: "Missing Supabase Config" } }),
+                in: () => ({ data: [], error: { message: "Missing Supabase Config" } }),
+            })
+        })
+    };
+}
+
+export const supabase = supabaseInstance;
 
 export const goApp = {
     auth: {

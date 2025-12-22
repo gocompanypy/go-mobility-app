@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { MapPin, Clock, CreditCard, History, User, Menu, ChevronRight, Car, Calendar, Bike, Key, Truck, Package, UtensilsCrossed, Search, Gift, Tag, Power, X, Star } from 'lucide-react';
+import { MapPin, Clock, CreditCard, History, User, Menu, ChevronRight, Car, Calendar, Bike, Key, Truck, Package, UtensilsCrossed, Search, Gift, Tag, Power, X, Star, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import Logo from '@/components/go/Logo';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+import PassengerDashboard from '@/components/go/PassengerDashboard';
+import { ArrowLeft } from 'lucide-react';
 import AddressInput from '@/components/go/AddressInput';
-import LiveMap from '@/components/go/LiveMap';
+import LiveMapbox from '@/components/go/LiveMapbox';
 import VehicleCard3D from '@/components/go/VehicleCard3D';
 import TripStatusCard from '@/components/go/TripStatusCard';
 import RatingModal from '@/components/go/RatingModal';
@@ -21,9 +24,10 @@ export default function PassengerHome() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [passenger, setPassenger] = useState(null);
-    const [step, setStep] = useState('input'); // input, vehicles, searching, trip
+    const [step, setStep] = useState('dashboard'); // dashboard, input, vehicles, searching, trip
     const [activeTab, setActiveTab] = useState('viajes');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isInputExpanded, setIsInputExpanded] = useState(false);
 
     // Trip request state
     const [pickup, setPickup] = useState({ address: '', lat: null, lng: null });
@@ -31,6 +35,7 @@ export default function PassengerHome() {
     const [selectedVehicle, setSelectedVehicle] = useState('economy');
     const [priceEstimates, setPriceEstimates] = useState([]);
     const [mapCenter, setMapCenter] = useState({ lat: 40.4168, lng: -3.7038 }); // Default center
+    const [routeGeoJSON, setRouteGeoJSON] = useState(null);
 
     // Active trip state
     const [activeTrip, setActiveTrip] = useState(null);
@@ -64,6 +69,8 @@ export default function PassengerHome() {
         }
     }, [activeTrip?.id]);
 
+    const [profileError, setProfileError] = useState(null);
+
     const loadUserData = async () => {
         try {
             const currentUser = await goApp.auth.me();
@@ -76,36 +83,48 @@ export default function PassengerHome() {
             setUser(currentUser);
 
             // Check for existing passenger profile
-            const passengers = await goApp.entities.Passenger.filter({ email: currentUser.email });
-            if (passengers.length > 0) {
-                setPassenger(passengers[0]);
-            } else {
-                // Create passenger profile
-                const newPassenger = await goApp.entities.Passenger.create({
-                    id: currentUser.id, // Ensure ID matches Auth ID
-                    email: currentUser.email,
-                    phone: currentUser.phone || '',
-                    first_name: currentUser.full_name?.split(' ')[0] || 'Usuario',
-                    last_name: currentUser.full_name?.split(' ').slice(1).join(' ') || '',
-                });
-                setPassenger(newPassenger);
+            // Use retry logic for robustness
+            let passengerProfile = null;
+            try {
+                // IMPORTANT: Filter by ID, not email, as email might change or be null in previous versions
+                // filtering by ID is guaranteed to be unique and consistent with RLS
+                const passengers = await goApp.entities.Passenger.filter({ id: currentUser.id });
+                if (passengers.length > 0) {
+                    passengerProfile = passengers[0];
+                } else {
+                    // Create passenger profile
+                    console.log("Creating missing profile for", currentUser.email);
+                    passengerProfile = await goApp.entities.Passenger.create({
+                        id: currentUser.id, // Ensure ID matches Auth ID
+                        email: currentUser.email,
+                        phone: currentUser.phone || '',
+                        first_name: currentUser.full_name?.split(' ')[0] || 'Usuario',
+                        last_name: currentUser.full_name?.split(' ').slice(1).join(' ') || '',
+                    });
+                }
+                setPassenger(passengerProfile);
+                setProfileError(null);
+            } catch (profileErr) {
+                console.error("Critical: Failed to load/create profile", profileErr);
+                setProfileError("No pudimos cargar tu perfil. Por favor contacta a soporte o reintenta.");
+                // Do NOT redirect here to avoid loop
+                return;
             }
 
-            // Check for active trip
-            // Need passenger ID first
-            const passengerId = passengers.length > 0 ? passengers[0].id : currentUser.id;
-
-            const trips = await goApp.entities.Trip.filter({
-                passenger_id: passengerId,
-                status: ['searching', 'accepted', 'arrived', 'in_progress']
-            });
-            if (trips.length > 0) {
-                setActiveTrip(trips[0]);
-                setStep('trip');
+            // Check for active trip (only if we have a passenger profile)
+            if (passengerProfile) {
+                // Need passenger ID 
+                const trips = await goApp.entities.Trip.filter({
+                    passenger_id: passengerProfile.id,
+                    status: ['searching', 'accepted', 'arrived', 'in_progress']
+                });
+                if (trips.length > 0) {
+                    setActiveTrip(trips[0]);
+                    setStep('trip');
+                }
             }
         } catch (error) {
-            console.error('Error loading user:', error);
-            // If checking user fails, it's safer to redirect to login
+            console.error('Error loading user session:', error);
             navigate(createPageUrl('PassengerLogin'));
         }
     };
@@ -188,8 +207,46 @@ export default function PassengerHome() {
 
             setPriceEstimates(estimates);
             setStep('vehicles');
+
+            // Fetch Route for visualization
+            if (pickup.lng && pickup.lat && dropoff.lng && dropoff.lat) {
+                fetchRoute(
+                    { lat: pickup.lat, lng: pickup.lng },
+                    { lat: dropoff.lat, lng: dropoff.lng }
+                );
+            }
         } catch (error) {
             console.error('Error calculating prices:', error);
+        }
+    };
+
+    // --- Route Fetching Logic ---
+    const fetchRoute = async (start, end) => {
+        try {
+            // Using Mapbox Directions API
+            // Valid profiles: 'mapbox/driving', 'mapbox/walking', 'mapbox/cycling'
+            const query = await fetch(
+                `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?steps=true&geometries=geojson&access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
+            );
+            const json = await query.json();
+
+            if (json.routes && json.routes.length > 0) {
+                const data = json.routes[0];
+                const route = data.geometry;
+
+                const geojson = {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: route
+                };
+
+                setRouteGeoJSON(geojson);
+
+                // Optional: Fit bounds to include the route
+                // You might calculate bounds here and setMapCenter or use a ref to Map to fitBounds
+            }
+        } catch (error) {
+            console.error("Error fetching route:", error);
         }
     };
 
@@ -236,7 +293,7 @@ export default function PassengerHome() {
                 cancelled_by: 'passenger',
             });
             setActiveTrip(null);
-            setStep('input');
+            setStep('dashboard');
         } catch (error) {
             console.error('Error cancelling trip:', error);
         }
@@ -253,14 +310,43 @@ export default function PassengerHome() {
             });
             setShowRating(false);
             setActiveTrip(null);
-            setStep('input');
+            setStep('dashboard');
         } catch (error) {
             console.error('Error submitting rating:', error);
         }
     };
 
     return (
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen bg-black text-white relative">
+            {/* Dashboard View */}
+            {step === 'dashboard' && !activeTrip && (
+                <div className="absolute inset-0 z-[100] bg-black">
+                    <PassengerDashboard
+                        user={passenger || user}
+                        onSelectService={(serviceId) => {
+                            if (serviceId === 'moto') {
+                                setSelectedVehicle('moto');
+                            }
+                            setStep('input');
+                        }}
+                        onSearchClick={() => {
+                            setStep('input');
+                            setIsInputExpanded(true);
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Back Arrow from Map to Dashboard */}
+            {step === 'input' && !activeTrip && (
+                <button
+                    onClick={() => setStep('dashboard')}
+                    className="absolute top-24 left-4 z-40 p-2 bg-black/50 rounded-full backdrop-blur text-white hover:bg-black/70 border border-white/10 shadow-lg"
+                >
+                    <ArrowLeft size={24} />
+                </button>
+            )}
+
             {/* Top Bar (Only visible when sidebar is closed) */}
             <header className={`fixed top-0 left-0 right-0 z-[2000] bg-black/95 backdrop-blur-xl border-b border-[#FFD700]/20 gold-glow transition-all duration-300 ${isSidebarOpen ? 'ml-80' : 'ml-0'}`} style={{ boxShadow: '0 4px 24px rgba(255, 215, 0, 0.15)' }}>
                 <div className="flex items-center justify-between px-4 py-3">
@@ -387,7 +473,8 @@ export default function PassengerHome() {
 
 
                 {/* Main Content */}
-                <main className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'ml-80' : 'ml-0'} relative ${!activeTrip ? 'pt-0' : 'pt-4'}`}>
+                {/* Main Content - Mobile Simulator Mode */}
+                <main className={`flex-1 flex flex-col transition-all duration-300 relative ${!activeTrip ? 'pt-0' : 'pt-4'} max-w-lg mx-auto w-full border-x border-[#2D2D44]/50 shadow-2xl`}>
                     {/* Tabs */}
                     {!activeTrip && (
                         <div className="w-full z-30 bg-black/95 backdrop-blur-xl border-b border-[#FFD700]/20 px-4 py-2" style={{ boxShadow: '0 4px 24px rgba(255, 215, 0, 0.1)' }}>
@@ -407,7 +494,7 @@ export default function PassengerHome() {
                     )}
                     {/* Map Area */}
                     <div className="flex-1 relative">
-                        <LiveMap
+                        <LiveMapbox
                             pickupLat={pickup.lat}
                             pickupLng={pickup.lng}
                             dropoffLat={dropoff.lat}
@@ -417,290 +504,219 @@ export default function PassengerHome() {
                             className="h-full min-h-[300px]"
                             interactive={step === 'selecting_dropoff'}
                             onCenterChange={setMapCenter}
+                            routeGeoJSON={routeGeoJSON}
                         />
+
+                        {/* Step: Map Selection Mode - MOVED HERE */}
+                        {step === 'selecting_dropoff' && (
+                            <div className="absolute top-0 left-0 right-0 bottom-0 z-50 pointer-events-none flex flex-col items-center justify-center">
+                                {/* Center Pin Overlay */}
+                                <div className="relative -mt-8 animate-bounce">
+                                    <MapPin size={48} className="text-[#FFD700] drop-shadow-lg" fill="black" />
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-4 h-2 bg-black/50 blur-[2px] rounded-full" />
+                                </div>
+
+                                {/* Controls Container */}
+                                <div className="absolute bottom-6 left-4 right-4 pointer-events-auto space-y-3">
+                                    <div className="bg-black/90 p-4 rounded-xl border border-[#FFD700]/30 text-center backdrop-blur-md">
+                                        <h3 className="text-lg font-bold text-white mb-1">Mueve el mapa</h3>
+                                        <p className="text-gray-400 text-sm">Ubica el pin en tu destino</p>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <Button
+                                            onClick={() => setStep('input')}
+                                            className="flex-1 bg-[#252538] hover:bg-[#2D2D44] text-white py-6 rounded-xl border border-[#2D2D44]"
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                setDropoff(prev => ({
+                                                    ...prev,
+                                                    address: 'Ubicación seleccionada en mapa',
+                                                    lat: mapCenter.lat,
+                                                    lng: mapCenter.lng
+                                                }));
+                                                setStep('input');
+                                            }}
+                                            className="flex-1 text-black font-bold py-6 rounded-xl gold-glow"
+                                            style={{ background: 'linear-gradient(135deg, #FFD700, #FFA500)' }}
+                                        >
+                                            Confirmar
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Bottom Panel */}
-                    <div className="bg-black rounded-t-3xl -mt-6 relative z-10 border-t-2 border-[#FFD700]/30" style={{ boxShadow: '0 -4px 32px rgba(255, 215, 0, 0.2)' }}>
-                        <div className="w-12 h-1 rounded-full mx-auto mt-3 mb-4" style={{ background: 'linear-gradient(90deg, #FFD700, #FFA500)' }} />
+                    {(step !== 'selecting_dropoff') && (
+                        <div className="bg-black/90 backdrop-blur-3xl rounded-t-[2.5rem] -mt-6 relative z-10 border-t border-white/10 ring-1 ring-white/5" style={{ boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.5)' }}>
+                            <div className="w-16 h-1.5 rounded-full mx-auto mt-4 mb-6 bg-white/20" />
 
-                        <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
-                            {/* Step: Input addresses */}
-                            {step === 'input' && (
-                                <div className="space-y-6">
-                                    {/* Search Bar */}
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => {/* Open search */ }}
-                                            className="flex-1 flex items-center gap-3 rounded-full p-4 text-left border-2 transition-all gold-border"
-                                            style={{ background: 'linear-gradient(135deg, #0A0A0A, #000000)' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.3)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
-                                        >
-                                            <Search size={20} className="text-[#FFD700]" />
-                                            <span className="text-gray-400 font-medium text-lg">¿A dónde vas?</span>
-                                        </button>
-                                        <Button
-                                            variant="outline"
-                                            className="border-2 border-[#FFD700]/30 text-white hover:bg-[#FFD700] hover:text-black transition-all"
-                                            onClick={() => setShowScheduleModal(true)}
-                                        >
-                                            <Clock size={18} className="mr-2" />
-                                            Más tarde
-                                        </Button>
-                                    </div>
-
-                                    {/* Sugerencias */}
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <h3 className="font-semibold text-lg">Sugerencias</h3>
-                                            <button className="text-sm text-gray-400 hover:text-white">Ver todo</button>
-                                        </div>
-
-                                        <div className="grid grid-cols-4 gap-3">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedCategory('ride');
-                                                    setStep('input');
-                                                    toast.info("¿A dónde quieres ir?");
-                                                }}
-                                                className={`flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 ${selectedCategory === 'ride' ? 'bg-[#FFD700]/10 border border-[#FFD700]' : ''}`}
-                                            >
-                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-[#FFD700]/20 shadow-lg shadow-[#FFD700]/10">
-                                                    <img src="/assets/3d/ride.png" alt="Viaje" className="w-full h-full object-cover" />
-                                                </div>
-                                                <span className={`text-xs text-center font-medium ${selectedCategory === 'ride' ? 'text-[#FFD700]' : 'text-gray-300'}`}>Viaje</span>
-                                            </button>
-
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
-                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
-                                                    <img src="/assets/3d/reserve.png" alt="Reserva" className="w-full h-full object-coverScale-110" />
-                                                </div>
-                                                <span className="text-xs text-center font-medium text-gray-300">Reserva</span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedCategory('moto');
-                                                    setStep('input');
-                                                    toast.info("Moto seleccionada. ¿A dónde vas?");
-                                                }}
-                                                className={`flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 relative ${selectedCategory === 'moto' ? 'bg-[#FFD700]/10 border border-[#FFD700]' : ''}`}
-                                            >
-                                                <div className="absolute top-0 right-0 z-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-md">Promo</div>
-                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
-                                                    <img src="/assets/3d/moto.png" alt="Moto" className="w-full h-full object-cover scale-110" />
-                                                </div>
-                                                <span className={`text-xs text-center font-medium ${selectedCategory === 'moto' ? 'text-[#FFD700]' : 'text-gray-300'}`}>Moto</span>
-                                            </button>
-
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
-                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
-                                                    <img src="/assets/3d/rent.png" alt="Alquiler" className="w-full h-full object-cover p-1" />
-                                                </div>
-                                                <span className="text-xs text-center font-medium text-gray-300">Alquiler</span>
-                                            </button>
-
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95 relative">
-                                                <div className="absolute top-0 right-0 z-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-md">Promo</div>
-                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
-                                                    <img src="/assets/3d/freight.png" alt="Fletes" className="w-full h-full object-cover scale-110" />
-                                                </div>
-                                                <span className="text-xs text-center font-medium text-gray-300">Fletes</span>
-                                            </button>
-
-                                            <button className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95">
-                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
-                                                    <img src="/assets/3d/package.png" alt="Paquetería" className="w-full h-full object-cover scale-90" />
-                                                </div>
-                                                <span className="text-xs text-center font-medium text-gray-300">Paquetería</span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => setActiveTab('eats')}
-                                                className="flex flex-col items-center gap-2 rounded-xl p-2 transition-all hover:scale-105 active:scale-95"
-                                            >
-                                                <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center overflow-hidden border border-white/5">
-                                                    <img src="/assets/3d/food.png" alt="Comida" className="w-full h-full object-cover scale-110" />
-                                                </div>
-                                                <span className="text-xs text-center font-medium text-gray-300">Comida</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Go Eats */}
-                                    {activeTab === 'viajes' && (
-                                        <div>
-                                            <div className="flex items-center justify-between mb-3">
-                                                <h3 className="font-semibold">Pide a domicilio con <span className="text-[#00D4B1]">Eats</span></h3>
-                                                <button className="text-sm text-gray-400 hover:text-white">Ver todos</button>
+                            <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
+                                {/* Step: Input addresses */}
+                                {step === 'input' && (
+                                    <div className="space-y-6">
+                                        {/* Search Bar / Input Mode Toggle */}
+                                        {!isInputExpanded ? (
+                                            <div className="flex gap-3">
+                                                <button
+                                                    onClick={() => setIsInputExpanded(true)}
+                                                    className="flex-1 flex items-center gap-4 rounded-2xl p-4 text-left bg-[#1A1A1A] border border-white/5 transition-all duration-300 group hover:bg-[#222]"
+                                                    style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}
+                                                >
+                                                    <div className="w-10 h-10 rounded-full bg-[#252525] flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                                        <Search size={22} className="text-[#F5C518]" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-white font-bold text-lg">¿A dónde vas?</span>
+                                                        <span className="text-gray-400 text-sm">Busca un destino</span>
+                                                    </div>
+                                                </button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-auto rounded-2xl px-4 border border-white/10 bg-[#1A1A1A] text-white hover:bg-[#252525] hover:text-white hover:border-[#F5C518]/50 transition-all flex flex-col items-center gap-1 min-w-[80px]"
+                                                    onClick={() => setShowScheduleModal(true)}
+                                                >
+                                                    <Clock size={20} className="text-[#F5C518]" />
+                                                    <span className="text-[10px] font-medium text-gray-400">Reservar</span>
+                                                </Button>
                                             </div>
-                                            <div className="bg-[#252538] rounded-xl p-4 border border-[#2D2D44]">
-                                                <p className="text-gray-400 text-sm">Restaurantes y tiendas cerca de ti</p>
+                                        ) : (
+                                            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h3 className="font-semibold text-lg">Planifica tu viaje</h3>
+                                                    <Button variant="ghost" size="sm" onClick={() => setIsInputExpanded(false)} className="text-red-400 hover:bg-red-900/20">Cancelar</Button>
+                                                </div>
+                                                <AddressInput
+                                                    type="pickup"
+                                                    value={pickup.address}
+                                                    onChange={(addr) => setPickup(prev => ({ ...prev, address: addr }))}
+                                                    onSelect={(place) => setPickup({ address: place.address, lat: place.lat, lng: place.lng })}
+                                                    savedPlaces={passenger?.saved_places || []}
+                                                    autoFocus={false}
+                                                />
+
+                                                <AddressInput
+                                                    type="dropoff"
+                                                    value={dropoff.address}
+                                                    onChange={(addr) => setDropoff(prev => ({ ...prev, address: addr }))}
+                                                    onSelect={(place) => {
+                                                        if (place.id === 'map-pin') {
+                                                            setStep('selecting_dropoff');
+                                                        } else {
+                                                            setDropoff({ address: place.address, lat: place.lat, lng: place.lng });
+                                                        }
+                                                    }}
+                                                    savedPlaces={passenger?.saved_places || []}
+                                                    autoFocus={true}
+                                                />
+
+                                                <Button
+                                                    onClick={calculatePrices}
+                                                    disabled={!pickup.lat || !dropoff.lat}
+                                                    className="w-full py-7 text-black font-bold text-xl rounded-xl transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, #F5C518, #DAA520)',
+                                                        boxShadow: '0 8px 30px rgba(218, 165, 32, 0.3)'
+                                                    }}
+                                                >
+                                                    Ver precios
+                                                </Button>
                                             </div>
+                                        )}
+
+                                        {/* Sugerencias */}
+                                    </div>
+                                )}
+
+                                {/* Step: Map Selection Mode (MOVED UP) */}
+
+                                {/* Step: Select vehicle */}
+                                {step === 'vehicles' && (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="text-xl font-bold">Elige tu GO</h2>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setStep('input')}
+                                                className="text-gray-400"
+                                            >
+                                                Cambiar ruta
+                                            </Button>
                                         </div>
-                                    )}
 
-                                    {/* Address Inputs (Hidden initially) */}
-                                    <div className="space-y-3">
-                                        <AddressInput
-                                            type="pickup"
-                                            value={pickup.address}
-                                            onChange={(addr) => setPickup(prev => ({ ...prev, address: addr }))}
-                                            onSelect={(place) => setPickup({ address: place.address, lat: place.lat, lng: place.lng })}
-                                            savedPlaces={passenger?.saved_places || []}
-                                        />
+                                        <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+                                            <Clock size={16} />
+                                            <span>
+                                                {priceEstimates[0]?.estimated_duration || 0} min • {priceEstimates[0]?.estimated_distance?.toFixed(1) || 0} km
+                                            </span>
+                                        </div>
 
-                                        <AddressInput
-                                            type="dropoff"
-                                            value={dropoff.address}
-                                            onChange={(addr) => setDropoff(prev => ({ ...prev, address: addr }))}
-                                            onSelect={(place) => {
-                                                if (place.id === 'map-pin') {
-                                                    setStep('selecting_dropoff');
-                                                } else {
-                                                    setDropoff({ address: place.address, lat: place.lat, lng: place.lng });
-                                                }
-                                            }}
-                                            savedPlaces={passenger?.saved_places || []}
-                                        />
+                                        <div className="space-y-3">
+                                            {priceEstimates.map((vehicle) => (
+                                                <VehicleCard3D
+                                                    key={vehicle.vehicle_type}
+                                                    vehicle={vehicle}
+                                                    price={vehicle.estimated_price}
+                                                    time={vehicle.estimated_duration}
+                                                    isSelected={selectedVehicle === vehicle.vehicle_type}
+                                                    onClick={() => setSelectedVehicle(vehicle.vehicle_type)}
+                                                />
+                                            ))}
+                                        </div>
 
                                         <Button
-                                            onClick={calculatePrices}
-                                            disabled={!pickup.lat || !dropoff.lat}
+                                            onClick={requestTrip}
                                             className="w-full py-6 text-black font-bold text-lg border-0 gold-glow"
                                             style={{ background: 'linear-gradient(135deg, #FFD700, #FFA500)', boxShadow: '0 8px 32px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)' }}
                                         >
-                                            Ver precios
+                                            Pedir {theme.vehicleTypes[selectedVehicle]?.name || 'GO'}
                                         </Button>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Step: Map Selection Mode */}
-                            {step === 'selecting_dropoff' && (
-                                <div className="absolute top-0 left-0 right-0 bottom-0 z-50 pointer-events-none flex flex-col items-center justify-center">
-                                    {/* Center Pin Overlay */}
-                                    <div className="relative -mt-8 animate-bounce">
-                                        <MapPin size={48} className="text-[#FFD700] drop-shadow-lg" fill="black" />
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 w-4 h-2 bg-black/50 blur-[2px] rounded-full" />
-                                    </div>
-
-                                    {/* Controls Container */}
-                                    <div className="absolute bottom-6 left-4 right-4 pointer-events-auto space-y-3">
-                                        <div className="bg-black/90 p-4 rounded-xl border border-[#FFD700]/30 text-center backdrop-blur-md">
-                                            <h3 className="text-lg font-bold text-white mb-1">Mueve el mapa</h3>
-                                            <p className="text-gray-400 text-sm">Ubica el pin en tu destino</p>
-                                        </div>
-
-                                        <div className="flex gap-3">
-                                            <Button
-                                                onClick={() => setStep('input')}
-                                                className="flex-1 bg-[#252538] hover:bg-[#2D2D44] text-white py-6 rounded-xl border border-[#2D2D44]"
-                                            >
-                                                Cancelar
-                                            </Button>
-                                            <Button
-                                                onClick={() => {
-                                                    setDropoff(prev => ({
-                                                        ...prev,
-                                                        address: 'Ubicación seleccionada en mapa',
-                                                        lat: mapCenter.lat,
-                                                        lng: mapCenter.lng
-                                                    }));
-                                                    setStep('input');
-                                                }}
-                                                className="flex-1 text-black font-bold py-6 rounded-xl gold-glow"
-                                                style={{ background: 'linear-gradient(135deg, #FFD700, #FFA500)' }}
-                                            >
-                                                Confirmar
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Step: Select vehicle */}
-                            {step === 'vehicles' && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-xl font-bold">Elige tu GO</h2>
+                                {/* Step: Searching */}
+                                {step === 'searching' && (
+                                    <div className="text-center py-8">
+                                        <div className="w-16 h-16 border-4 border-[#00D4B1] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                                        <h2 className="text-xl font-bold mb-2">Buscando conductor...</h2>
+                                        <p className="text-gray-400 mb-6">Esto puede tomar unos segundos</p>
                                         <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setStep('input')}
-                                            className="text-gray-400"
+                                            variant="outline"
+                                            onClick={cancelTrip}
+                                            className="border-red-500/50 text-red-400 hover:bg-red-500/10 min-w-[200px]"
                                         >
-                                            Cambiar ruta
+                                            <X size={18} className="mr-2" />
+                                            Cancelar solicitud
                                         </Button>
                                     </div>
+                                )}
 
-                                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
-                                        <Clock size={16} />
-                                        <span>
-                                            {priceEstimates[0]?.estimated_duration || 0} min • {priceEstimates[0]?.estimated_distance?.toFixed(1) || 0} km
-                                        </span>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        {priceEstimates.map((vehicle) => (
-                                            <VehicleCard3D
-                                                key={vehicle.vehicle_type}
-                                                vehicle={vehicle}
-                                                price={vehicle.estimated_price}
-                                                time={vehicle.estimated_duration}
-                                                isSelected={selectedVehicle === vehicle.vehicle_type}
-                                                onClick={() => setSelectedVehicle(vehicle.vehicle_type)}
-                                            />
-                                        ))}
-                                    </div>
-
-                                    <Button
-                                        onClick={requestTrip}
-                                        className="w-full py-6 text-black font-bold text-lg border-0 gold-glow"
-                                        style={{ background: 'linear-gradient(135deg, #FFD700, #FFA500)', boxShadow: '0 8px 32px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)' }}
-                                    >
-                                        Pedir {theme.vehicleTypes[selectedVehicle]?.name || 'GO'}
-                                    </Button>
-                                </div>
-                            )}
-
-                            {/* Step: Searching */}
-                            {step === 'searching' && (
-                                <div className="text-center py-8">
-                                    <div className="w-16 h-16 border-4 border-[#00D4B1] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                                    <h2 className="text-xl font-bold mb-2">Buscando conductor...</h2>
-                                    <p className="text-gray-400 mb-6">Esto puede tomar unos segundos</p>
-                                    <Button
-                                        variant="outline"
-                                        onClick={cancelTrip}
-                                        className="border-red-500/50 text-red-400 hover:bg-red-500/10 min-w-[200px]"
-                                    >
-                                        <X size={18} className="mr-2" />
-                                        Cancelar solicitud
-                                    </Button>
-                                </div>
-                            )}
-
-                            {/* Step: Active trip */}
-                            {step === 'trip' && activeTrip && (
-                                <TripStatusCard
-                                    trip={activeTrip}
-                                    userType="passenger"
-                                    onCancel={cancelTrip}
-                                    onChat={() => setShowChat(true)}
-                                    onCall={() => {
-                                        if (activeTrip?.driver_phone) {
-                                            window.location.href = `tel:${activeTrip.driver_phone}`;
-                                        } else {
-                                            alert('Número no disponible');
-                                        }
-                                    }}
-                                    onRate={() => setShowRating(true)}
-                                />
-                            )}
+                                {/* Step: Active trip */}
+                                {step === 'trip' && activeTrip && (
+                                    <TripStatusCard
+                                        trip={activeTrip}
+                                        userType="passenger"
+                                        onCancel={cancelTrip}
+                                        onChat={() => setShowChat(true)}
+                                        onCall={() => {
+                                            if (activeTrip?.driver_phone) {
+                                                window.location.href = `tel:${activeTrip.driver_phone}`;
+                                            } else {
+                                                alert('Número no disponible');
+                                            }
+                                        }}
+                                        onRate={() => setShowRating(true)}
+                                    />
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </main>
 
                 {/* Chat Panel */}
@@ -719,7 +735,7 @@ export default function PassengerHome() {
                     onClose={() => {
                         setShowRating(false);
                         setActiveTrip(null);
-                        setStep('input');
+                        setStep('dashboard');
                     }}
                     onSubmit={submitRating}
                     targetName={activeTrip?.driver_name || 'Conductor'}
@@ -736,6 +752,34 @@ export default function PassengerHome() {
                         // In a real app, we would create a scheduled trip here
                     }}
                 />
+
+                {/* Critical Profile Error Modal */}
+                {profileError && (
+                    <div className="fixed inset-0 z-[3000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
+                        <div className="bg-[#1A1A1A] border border-red-500/30 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
+                            <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6">
+                                <Shield size={32} className="text-red-500" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white mb-2">Acción requerida</h2>
+                            <p className="text-gray-400 mb-8">{profileError}</p>
+                            <div className="flex flex-col gap-3">
+                                <Button
+                                    onClick={() => window.location.reload()}
+                                    className="w-full py-6 bg-[#FFD700] text-black font-bold text-lg hover:bg-[#FFA500]"
+                                >
+                                    Reintentar
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => navigate(createPageUrl('PassengerLogin'))}
+                                    className="w-full py-6 text-white border-white/10 hover:bg-white/5"
+                                >
+                                    Volver al inicio
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -26,12 +26,25 @@ export default function PassengerSignup() {
 
         try {
             // Registro con Supabase (Auth + DB)
-            await goApp.auth.register(formData.phone, formData.password, {
+            const result = await goApp.auth.register(formData.phone, formData.password, {
                 role: 'passenger',
                 full_name: formData.fullName,
                 phone: formData.phone,
                 email: formData.email
             });
+
+            // Check if session is missing (Email Confirmation Required)
+            if (result && !result.session && result.user) {
+                toast.warning('Registro exitoso, pero se requiere verificación', {
+                    description: 'Si tu app requiere confirmar email, revisa tu bandeja. Si no, contacta a soporte.',
+                    duration: 6000
+                });
+                // Still redirect to login so they can try
+                setTimeout(() => {
+                    navigate(createPageUrl('PassengerLogin'));
+                }, 3000);
+                return;
+            }
 
             toast.success('¡Cuenta creada con éxito! Bienvenido/a 🚕');
 

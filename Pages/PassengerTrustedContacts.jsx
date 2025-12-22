@@ -73,10 +73,10 @@ export default function PassengerTrustedContacts() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#00D4B1] selection:text-black">
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-[#FFD700] selection:text-black">
             {/* Ambient Background */}
             <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-b from-[#00D4B1]/10 to-transparent blur-3xl opacity-40" />
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-b from-[#FFD700]/10 to-transparent blur-3xl opacity-20" />
             </div>
 
             {/* Header */}
@@ -86,7 +86,7 @@ export default function PassengerTrustedContacts() {
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate(createPageUrl('PassengerHome'))}
-                        className="text-gray-400 hover:text-white hover:bg-white/5 rounded-full"
+                        className="text-[#FFD700] hover:text-[#FFD700]/80 hover:bg-[#FFD700]/10 rounded-full"
                     >
                         <ArrowLeft size={20} />
                     </Button>
@@ -99,13 +99,13 @@ export default function PassengerTrustedContacts() {
 
             <main className="max-w-2xl mx-auto p-4 md:p-6 pb-24">
                 {/* Info Card */}
-                <div className="bg-[#12121A] rounded-2xl p-6 mb-8 border-l-4 border-[#00D4B1] relative overflow-hidden">
+                <div className="bg-zinc-900/50 rounded-2xl p-6 mb-8 border border-[#FFD700]/30 relative overflow-hidden shadow-[0_4px_20px_rgba(255,215,0,0.1)]">
                     <div className="absolute top-0 right-0 p-4 opacity-5">
-                        <Shield size={100} />
+                        <Shield size={100} color="#FFD700" />
                     </div>
                     <div className="relative z-10">
                         <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                            <Shield size={20} className="text-[#00D4B1]" />
+                            <Shield size={20} className="text-[#FFD700]" />
                             Tu Seguridad es Primero
                         </h2>
                         <p className="text-sm text-gray-400 leading-relaxed max-w-sm">
@@ -120,12 +120,12 @@ export default function PassengerTrustedContacts() {
                         <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Tus Contactos</h3>
                         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                             <DialogTrigger asChild>
-                                <Button className="bg-[#00D4B1] text-black hover:bg-[#00B89C] rounded-full px-4 h-8 text-xs font-bold shadow-lg shadow-[#00D4B1]/20">
+                                <Button className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black hover:opacity-90 rounded-full px-4 h-8 text-xs font-bold shadow-lg shadow-[#FFD700]/20 border-0">
                                     <UserPlus size={14} className="mr-2" />
                                     AGREGAR
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="bg-[#1A1A2E] border-[#2D2D44] text-white">
+                            <DialogContent className="bg-[#0A0A0A] border-[#FFD700]/20 text-white">
                                 <DialogHeader>
                                     <DialogTitle>Agregar Contacto</DialogTitle>
                                 </DialogHeader>
@@ -157,7 +157,7 @@ export default function PassengerTrustedContacts() {
                                             placeholder="Ej: Amigo, Padre, Pareja"
                                         />
                                     </div>
-                                    <Button onClick={handleAddContact} className="w-full bg-[#00D4B1] text-black hover:bg-[#00B89C] font-bold mt-2">
+                                    <Button onClick={handleAddContact} className="w-full bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black hover:opacity-90 font-bold mt-2 border-0">
                                         Guardar Contacto
                                     </Button>
                                 </div>
@@ -181,11 +181,11 @@ export default function PassengerTrustedContacts() {
                         contacts.map((contact) => (
                             <div
                                 key={contact.id}
-                                className="bg-[#1A1A2E] rounded-xl p-4 flex items-center justify-between border border-white/5 hover:border-[#00D4B1]/30 transition-all group"
+                                className="bg-zinc-900/50 rounded-xl p-4 flex items-center justify-between border border-white/5 hover:border-[#FFD700]/50 hover:bg-black transition-all group"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center text-xl shadow-inner border border-white/10">
-                                        <Heart size={20} className="text-[#ff4757]" fill="#ff4757" />
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-800 to-black flex items-center justify-center text-xl shadow-inner border border-white/10">
+                                        <Heart size={20} className="text-[#FFD700]" fill="#FFD700" />
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-white">{contact.name}</h4>

@@ -27,8 +27,7 @@ export default function PassengerLogin() {
         } catch (error) {
             console.error(error);
 
-            // Check for both English (Supabase default) and Spanish (Custom) error messages
-            // Also check for "invalid_credentials" code or common patterns
+            // Improved Error Handling
             const errorMessage = error.message?.toLowerCase() || '';
             const isAuthError =
                 errorMessage.includes("credenciales incorrectas") ||
@@ -38,16 +37,21 @@ export default function PassengerLogin() {
                 errorMessage.includes("user not found");
 
             if (isAuthError) {
-                toast("No encontramos tu cuenta", {
+                toast.error("No encontramos tu cuenta", {
                     description: "Parece que este número no está registrado o la contraseña es incorrecta.",
                     action: {
                         label: "Crear Cuenta",
                         onClick: () => navigate(createPageUrl('PassengerSignup'), { state: { phone } }),
                     },
                 });
+            } else if (errorMessage.includes("email not confirmed")) {
+                toast.error("Cuenta no verificada", {
+                    description: "Tu cuenta requiere verificación. Por favor contacta a soporte o intenta registrarte nuevamente.",
+                });
             } else {
                 toast.error("Error al iniciar sesión", {
-                    description: error.message || "Ocurrió un error inesperado, intenta nuevamente."
+                    description: `Error: ${error.message}`, // Show the REAL error for debugging
+                    duration: 5000,
                 });
             }
         } finally {
@@ -99,8 +103,11 @@ export default function PassengerLogin() {
                                     placeholder="0981 123 456"
                                     value={phone}
                                     onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '');
-                                        if (val.length <= 10) {
+                                        // Allow any input, just filter for storage/display logic
+                                        const raw = e.target.value;
+                                        // Only keep numbers for state, but maybe allow formatting in future
+                                        const val = raw.replace(/\D/g, '');
+                                        if (val.length <= 15) { // Increased limit to not block users blindly
                                             setPhone(val);
                                         }
                                     }}

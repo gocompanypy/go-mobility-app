@@ -59,10 +59,10 @@ export default function PassengerHistory() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-[#00D4B1] selection:text-black font-sans">
+        <div className="min-h-screen bg-black text-white selection:bg-[#FFD700] selection:text-black font-sans">
             {/* Ambient Background */}
             <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-[#00D4B1]/5 to-transparent blur-3xl" />
+                <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-[#FFD700]/10 to-transparent blur-3xl opacity-30" />
             </div>
 
             {/* Header */}
@@ -72,11 +72,11 @@ export default function PassengerHistory() {
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate(createPageUrl('PassengerHome'))}
-                        className="text-gray-400 hover:text-white hover:bg-white/5 rounded-full"
+                        className="text-[#FFD700] hover:text-[#FFD700]/80 hover:bg-[#FFD700]/10 rounded-full"
                     >
                         <ArrowLeft size={20} />
                     </Button>
-                    <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                    <h1 className="text-lg font-bold tracking-tight text-white">
                         Mis Viajes
                     </h1>
                 </div>
@@ -86,15 +86,16 @@ export default function PassengerHistory() {
                 {/* Filters */}
                 <div className="px-4 py-6 sticky top-[60px] z-30 bg-[#050505]/95 backdrop-blur-xl">
                     <Tabs value={filter} onValueChange={setFilter} className="w-full">
-                        <TabsList className="bg-[#1A1A2E]/50 p-1 w-full border border-white/5 rounded-full">
+                        <TabsList className="bg-zinc-900/80 p-1 w-full border border-white/5 rounded-full">
                             {['all', 'completed', 'cancelled'].map((tab) => (
                                 <TabsTrigger
                                     key={tab}
                                     value={tab}
                                     className="
                                         flex-1 rounded-full text-xs font-medium py-2 transition-all duration-300
-                                        data-[state=active]:bg-[#00D4B1] data-[state=active]:text-black 
-                                        data-[state=active]:shadow-[0_0_20px_rgba(0,212,177,0.3)]
+                                        data-[state=active]:bg-[#FFD700] data-[state=active]:text-black 
+                                        data-[state=active]:font-bold
+                                        data-[state=active]:shadow-[0_0_20px_rgba(255,215,0,0.3)]
                                         text-gray-400 hover:text-white
                                     "
                                 >
@@ -124,9 +125,9 @@ export default function PassengerHistory() {
                         </div>
                     ) : filteredTrips.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in duration-500">
-                            <div className="w-24 h-24 bg-gradient-to-tr from-[#1A1A2E] to-[#252538] rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/5 relative group">
-                                <div className="absolute inset-0 bg-[#00D4B1] opacity-0 group-hover:opacity-20 rounded-full blur-xl transition-opacity duration-500" />
-                                <MapPin size={40} className="text-gray-500 group-hover:text-[#00D4B1] transition-colors duration-300" />
+                            <div className="w-24 h-24 bg-gradient-to-tr from-[#1A1A1A] to-[#2A2A2A] rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(255,215,0,0.1)] border border-[#FFD700]/20 relative group">
+                                <div className="absolute inset-0 bg-[#FFD700] opacity-0 group-hover:opacity-20 rounded-full blur-xl transition-opacity duration-500" />
+                                <MapPin size={40} className="text-[#FFD700]/50 group-hover:text-[#FFD700] transition-colors duration-300" />
                             </div>
                             <h3 className="text-xl font-bold mb-2 text-white">
                                 {filter === 'all' ? 'Aún sin viajes' : 'Carpeta vacía'}
@@ -142,9 +143,9 @@ export default function PassengerHistory() {
                                 <Button
                                     onClick={() => navigate(createPageUrl('PassengerHome'))}
                                     className="
-                                        bg-[#00D4B1] text-black font-bold px-8 py-6 rounded-full
-                                        shadow-[0_0_30px_rgba(0,212,177,0.3)] hover:shadow-[0_0_50px_rgba(0,212,177,0.5)]
-                                        hover:bg-[#00ebd4] hover:scale-105 transition-all duration-300
+                                        bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold px-8 py-6 rounded-full
+                                        shadow-[0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_rgba(255,215,0,0.5)]
+                                        hover:scale-105 transition-all duration-300 border-0
                                     "
                                 >
                                     Pedir mi primer viaje
@@ -162,20 +163,20 @@ export default function PassengerHistory() {
                                     <div
                                         key={trip.id}
                                         className="
-                                            group bg-[#12121A]/80 backdrop-blur-md rounded-2xl border border-white/5 
-                                            hover:border-[#00D4B1]/30 hover:bg-[#1A1A2E] transition-all duration-300
+                                            group bg-zinc-900/50 backdrop-blur-md rounded-2xl border border-white/5 
+                                            hover:border-[#FFD700]/50 hover:bg-black transition-all duration-300
                                             overflow-hidden relative animate-in slide-in-from-bottom-4 fade-in
                                         "
                                         style={{ animationDelay: `${idx * 50}ms` }}
                                     >
                                         {/* Status Line */}
-                                        <div className={`absolute top-0 left-0 bottom-0 w-1 ${isCompleted ? 'bg-[#00D4B1]' : 'bg-gray-700'}`} />
+                                        <div className={`absolute top-0 left-0 bottom-0 w-1 ${isCompleted ? 'bg-[#FFD700]' : 'bg-gray-800'}`} />
 
                                         <div className="p-5 pl-7">
                                             {/* Header */}
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-[#252538] flex items-center justify-center text-xl shadow-inner">
+                                                    <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-xl shadow-inner border border-white/5">
                                                         {vehicleConfig.icon}
                                                     </div>
                                                     <div>
@@ -192,14 +193,14 @@ export default function PassengerHistory() {
                                             {/* Route */}
                                             <div className="relative pl-4 space-y-4 mb-5">
                                                 {/* Connecting Line */}
-                                                <div className="absolute left-[5px] top-[8px] bottom-[24px] w-[2px] bg-gradient-to-b from-[#00D4B1] to-[#FF3B30] opacity-30" />
+                                                <div className="absolute left-[5px] top-[8px] bottom-[24px] w-[2px] bg-gradient-to-b from-[#FFD700] to-[#FFA500] opacity-30" />
 
                                                 <div className="relative">
-                                                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-[#00D4B1] bg-[#050505]" />
+                                                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-[#FFD700] bg-black" />
                                                     <p className="text-sm text-gray-300 font-medium leading-tight">{trip.pickup_address}</p>
                                                 </div>
                                                 <div className="relative">
-                                                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-sm border-2 border-[#FF3B30] bg-[#050505]" />
+                                                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-sm border-2 border-[#FFA500] bg-black" />
                                                     <p className="text-sm text-gray-300 font-medium leading-tight">{trip.dropoff_address}</p>
                                                 </div>
                                             </div>
@@ -208,21 +209,21 @@ export default function PassengerHistory() {
                                             <div className="flex items-center justify-between pt-4 border-t border-white/5">
                                                 <div className="flex items-center gap-4">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center border border-white/10">
+                                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center border border-white/10">
                                                             <User size={12} className="text-gray-400" />
                                                         </div>
                                                         <span className="text-xs text-gray-400">{trip.driver_name || 'Conductor'}</span>
                                                     </div>
                                                     {trip.passenger_rating && (
-                                                        <div className="flex items-center gap-1 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">
-                                                            <Star size={10} className="text-yellow-500" fill="currentColor" />
-                                                            <span className="text-[10px] font-bold text-yellow-500">{trip.passenger_rating}</span>
+                                                        <div className="flex items-center gap-1 bg-[#FFD700]/10 px-2 py-0.5 rounded-full border border-[#FFD700]/20">
+                                                            <Star size={10} className="text-[#FFD700]" fill="currentColor" />
+                                                            <span className="text-[10px] font-bold text-[#FFD700]">{trip.passenger_rating}</span>
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 <div className="text-right">
-                                                    <span className="text-lg font-bold text-[#00D4B1] tracking-tight">
+                                                    <span className="text-lg font-bold text-[#FFD700] tracking-tight">
                                                         Gs. {(trip.final_price || trip.estimated_price)?.toLocaleString('es-PY')}
                                                     </span>
                                                 </div>
