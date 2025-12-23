@@ -1,2 +1,19 @@
 node_modules
 .vercel
+dist
+.env
+.env.local
+.DS_Store
+
+# Capacitor
+android/app/build
+android/.gradle
+android/local.properties
+android/captures
+android/app/google-services.json
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
