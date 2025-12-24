@@ -87,7 +87,7 @@ export default function DriverWelcome() {
             {/* Bottom Actions */}
             <div className="px-6 pb-12 pt-4 relative z-10 w-full max-w-md mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500">
                 <Button
-                    onClick={() => navigate(createPageUrl('DriverSignup'))}
+                    onClick={() => navigate(createPageUrl('DriverRegister'))}
                     className="w-full py-7 text-black font-bold text-lg rounded-xl relative overflow-hidden group transition-all duration-300 hover:scale-[1.02]"
                     style={{
                         background: 'linear-gradient(135deg, #FFD700, #FFA500)',

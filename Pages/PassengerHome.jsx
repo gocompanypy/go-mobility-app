@@ -63,11 +63,47 @@ export default function PassengerHome() {
     }, []);
 
     useEffect(() => {
-        if (activeTrip) {
-            const interval = setInterval(refreshTrip, 3000);
-            return () => clearInterval(interval);
+        let subscription = null;
+        if (activeTrip?.id) {
+            subscription = goApp.subscriptions.trip(activeTrip.id, (newTrip) => {
+                setActiveTrip(newTrip);
+                if (['completed', 'cancelled_passenger', 'cancelled_driver', 'no_drivers'].includes(newTrip.status)) {
+                    if (newTrip.status === 'completed' && !newTrip.passenger_rating) {
+                        setShowRating(true);
+                    } else {
+                        setStep('input');
+                        setActiveTrip(null);
+                    }
+                }
+            });
         }
+        return () => {
+            if (subscription) subscription.unsubscribe();
+        };
     }, [activeTrip?.id]);
+
+    const [nearbyDrivers, setNearbyDrivers] = useState([]);
+
+    // Subscribe to nearby drivers
+    useEffect(() => {
+        let subscription = null;
+        if (pickup.lat && pickup.lng && step === 'input') {
+            subscription = goApp.subscriptions.nearbyDrivers(pickup.lat, pickup.lng, 5, (payload) => {
+                // Refresh list on any change
+                loadNearbyDrivers();
+            });
+            loadNearbyDrivers();
+        }
+        return () => {
+            if (subscription) subscription.unsubscribe();
+        };
+    }, [pickup.lat, pickup.lng, step]);
+
+    const loadNearbyDrivers = async () => {
+        if (!pickup.lat || !pickup.lng) return;
+        const drivers = await goApp.entities.Driver.getNearby(pickup.lat, pickup.lng, 5);
+        setNearbyDrivers(drivers);
+    };
 
     const [profileError, setProfileError] = useState(null);
 
@@ -129,25 +165,6 @@ export default function PassengerHome() {
         }
     };
 
-    const refreshTrip = async () => {
-        if (!activeTrip?.id) return;
-        try {
-            const trips = await goApp.entities.Trip.filter({ id: activeTrip.id });
-            if (trips.length > 0) {
-                setActiveTrip(trips[0]);
-                if (['completed', 'cancelled_passenger', 'cancelled_driver', 'no_drivers'].includes(trips[0].status)) {
-                    if (trips[0].status === 'completed' && !trips[0].passenger_rating) {
-                        setShowRating(true);
-                    } else {
-                        setStep('input');
-                        setActiveTrip(null);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error refreshing trip:', error);
-        }
-    };
 
     const [selectedCategory, setSelectedCategory] = useState(null); // 'ride', 'moto', 'package', 'food'
 
@@ -505,6 +522,7 @@ export default function PassengerHome() {
                             interactive={step === 'selecting_dropoff'}
                             onCenterChange={setMapCenter}
                             routeGeoJSON={routeGeoJSON}
+                            nearbyDrivers={nearbyDrivers}
                         />
 
                         {/* Step: Map Selection Mode - MOVED HERE */}

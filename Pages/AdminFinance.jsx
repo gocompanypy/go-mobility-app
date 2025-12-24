@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import {
     ArrowLeft, Wallet, TrendingUp, AlertCircle, Download, CreditCard,
-    DollarSign, CheckCircle, Settings, Map, Zap, Edit2, Save, Plus
+    DollarSign, CheckCircle, Settings, Map, Zap, Edit2, Save, Plus,
+    Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,14 +20,12 @@ import {
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge'; // Assuming Badge exists or will fallback to generic if not, but typically shadcn has it. If not I will remove or use div.
-// Note: Badge was used in the previous file content (line 251), so it exists.
-
+import { Badge } from '@/components/ui/badge';
 import { theme } from '@/components/go/theme';
 
 export default function AdminFinance() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('summary'); // 'summary', 'tariffs', 'zones'
+    const [activeTab, setActiveTab] = useState('summary'); // 'summary', 'tariffs', 'zones', 'weekly_tiers'
     const [isLoading, setIsLoading] = useState(true);
 
     // Data States
@@ -35,6 +34,7 @@ export default function AdminFinance() {
     const [payouts, setPayouts] = useState([]);
     const [priceConfigs, setPriceConfigs] = useState([]);
     const [zones, setZones] = useState([]);
+    const [weeklyStats, setWeeklyStats] = useState([]);
 
     // Payment Modal State
     const [selectedDebtor, setSelectedDebtor] = useState(null);
@@ -54,12 +54,13 @@ export default function AdminFinance() {
         setIsLoading(true);
         try {
             // Load independently so one failure doesn't block others
-            const [statsResult, debtorsResult, payoutsResult, tariffResult, zoneResult] = await Promise.allSettled([
+            const [statsResult, debtorsResult, payoutsResult, tariffResult, zoneResult, weeklyResult] = await Promise.allSettled([
                 goApp.entities.Wallet.getStats(),
                 goApp.entities.Wallet.listDebtors(),
                 goApp.entities.Wallet.listPayouts(),
                 goApp.entities.PriceConfig.list(),
-                goApp.entities.Zone.list()
+                goApp.entities.Zone.list(),
+                goApp.entities.Wallet.listWeeklyStats()
             ]);
 
             if (statsResult.status === 'fulfilled') setStats(statsResult.value);
@@ -67,13 +68,11 @@ export default function AdminFinance() {
             if (payoutsResult.status === 'fulfilled') setPayouts(payoutsResult.value);
 
             if (tariffResult.status === 'fulfilled') {
-                console.log("Tariffs loaded:", tariffResult.value);
                 setPriceConfigs(tariffResult.value || []);
-            } else {
-                console.error("Error loading prices:", tariffResult.reason);
             }
 
             if (zoneResult.status === 'fulfilled') setZones(zoneResult.value);
+            if (weeklyResult.status === 'fulfilled') setWeeklyStats(weeklyResult.value);
 
         } catch (error) {
             console.error("CRITICAL Error loading finance data:", error);
@@ -180,10 +179,10 @@ export default function AdminFinance() {
             {/* Header */}
             <main className="p-6 max-w-7xl mx-auto space-y-8">
                 {/* Tabs Navigation */}
-                <div className="flex gap-2 mb-4">
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
                     <button
                         onClick={() => setActiveTab('summary')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'summary'
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'summary'
                             ? 'bg-[#252538] text-white border border-[#2D2D44]'
                             : 'text-gray-400 hover:text-white hover:bg-[#1A1A2E]'
                             }`}
@@ -192,7 +191,7 @@ export default function AdminFinance() {
                     </button>
                     <button
                         onClick={() => setActiveTab('tariffs')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'tariffs'
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'tariffs'
                             ? 'bg-[#252538] text-white border border-[#2D2D44]'
                             : 'text-gray-400 hover:text-white hover:bg-[#1A1A2E]'
                             }`}
@@ -201,12 +200,21 @@ export default function AdminFinance() {
                     </button>
                     <button
                         onClick={() => setActiveTab('zones')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'zones'
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'zones'
                             ? 'bg-[#252538] text-white border border-[#2D2D44]'
                             : 'text-gray-400 hover:text-white hover:bg-[#1A1A2E]'
                             }`}
                     >
                         Zonas & Surge Pricing
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('weekly_tiers')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'weekly_tiers'
+                            ? 'bg-[#252538] text-white border border-[#2D2D44]'
+                            : 'text-gray-400 hover:text-white hover:bg-[#1A1A2E]'
+                            }`}
+                    >
+                        Cierre Semanal (Tarifas)
                     </button>
                 </div>
 
@@ -440,8 +448,7 @@ export default function AdminFinance() {
                             </CardContent>
                         </Card>
                     </div>
-                )
-                }
+                )}
 
                 {/* --- TAB: ZONAS --- */}
                 {
@@ -508,7 +515,84 @@ export default function AdminFinance() {
                         </div>
                     )
                 }
-            </main >
+
+                {/* --- TAB: CIERRE SEMANAL (TIERS) --- */}
+                {activeTab === 'weekly_tiers' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        <Card className="bg-[#1A1A2E] border-[#2D2D44]">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-white flex items-center gap-2">
+                                        <Clock className="text-[#00D4B1]" size={20} />
+                                        Cierre Semanal de Conductores
+                                    </CardTitle>
+                                    <CardDescription className="text-gray-400">
+                                        Clasificación automática basada en horas de conexión (8h = Full | 4-8h = Part | &lt;4h = Flex)
+                                    </CardDescription>
+                                </div>
+                                <Button className="bg-[#FFD700] text-black hover:bg-[#E6C200]">
+                                    <CheckCircle size={18} className="mr-2" />
+                                    Ejecutar Cobro Masivo
+                                </Button>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader className="bg-[#0F0F1A]">
+                                        <TableRow className="border-[#2D2D44]">
+                                            <TableHead className="text-gray-400">Conductor</TableHead>
+                                            <TableHead className="text-gray-400 text-center">Horas Semanales</TableHead>
+                                            <TableHead className="text-gray-400 text-center">Promedio Diario</TableHead>
+                                            <TableHead className="text-gray-400 text-center">Nivel Detectado</TableHead>
+                                            <TableHead className="text-gray-400 text-right">Ingresos Generados</TableHead>
+                                            <TableHead className="text-gray-400 text-right">Tarifa a Cobrar</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {weeklyStats.map((stat) => (
+                                            <TableRow key={stat.id} className="border-[#2D2D44] hover:bg-[#252538]">
+                                                <TableCell className="font-medium text-white">
+                                                    <div>{stat.name}</div>
+                                                    <div className="text-xs text-gray-500">{stat.phone}</div>
+                                                </TableCell>
+                                                <TableCell className="text-center text-white">{stat.weekly_hours} hs</TableCell>
+                                                <TableCell className="text-center text-white font-bold">{stat.daily_avg} hs/día</TableCell>
+                                                <TableCell className="text-center">
+                                                    {stat.daily_avg >= 8 ? (
+                                                        <Badge className="bg-[#FFD700]/20 text-[#FFD700] hover:bg-[#FFD700]/30 border-0">
+                                                            🥇 Full Time
+                                                        </Badge>
+                                                    ) : stat.daily_avg >= 4 ? (
+                                                        <Badge className="bg-[#00D4B1]/20 text-[#00D4B1] hover:bg-[#00D4B1]/30 border-0">
+                                                            🥈 Part Time
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-0">
+                                                            🥉 Flex (Híbrido)
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right text-gray-400">
+                                                    Gs. {stat.weekly_revenue.toLocaleString()}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="font-bold text-white text-lg">
+                                                        Gs. {stat.calculated_fee.toLocaleString()}
+                                                    </div>
+                                                    {stat.daily_avg < 4 && (
+                                                        <div className="text-[10px] text-gray-500">
+                                                            (30k + 10%)
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
+            </main>
 
             {/* --- DIALOGS --- */}
 
@@ -666,6 +750,6 @@ export default function AdminFinance() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div >
+        </div>
     );
 }

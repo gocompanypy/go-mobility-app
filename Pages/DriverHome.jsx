@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl, formatCurrency } from '@/lib/utils';
-import { Power, Menu, DollarSign, Star, Navigation, MapPin, ChevronRight, TrendingUp, Coffee, Bell, CreditCard } from 'lucide-react';
+import { Power, Menu, DollarSign, Star, Navigation, MapPin, ChevronRight, TrendingUp, Coffee, Bell, CreditCard, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import Logo from '@/components/go/Logo';
@@ -19,6 +19,8 @@ export default function DriverHome() {
   const [user, setUser] = useState(null);
   const [driver, setDriver] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProfileMissing, setIsProfileMissing] = useState(false);
 
   // Trip states
   const [pendingRequest, setPendingRequest] = useState(null);
@@ -34,19 +36,71 @@ export default function DriverHome() {
     loadDriverData();
   }, []);
 
+  // Location Broadcaster
   useEffect(() => {
-    if (isOnline && !activeTrip) {
-      const interval = setInterval(checkForRequests, 5000);
-      return () => clearInterval(interval);
+    let interval = null;
+    if (isOnline && !activeTrip) { // Only broadcast when online/available
+      interval = setInterval(async () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (pos) => {
+            try {
+              await goApp.entities.Driver.updateLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.heading || 0);
+            } catch (e) { console.error("Location broadcast error", e); }
+          });
+        }
+      }, 10000); // Every 10s
     }
+    return () => { if (interval) clearInterval(interval); };
   }, [isOnline, activeTrip]);
 
+  // Real-time Request Listener
   useEffect(() => {
-    if (activeTrip) {
-      const interval = setInterval(refreshTrip, 3000);
-      return () => clearInterval(interval);
+    let subscription = null;
+    if (isOnline && !activeTrip && driver) {
+      // Listen for any NEW trip with searching status and matching vehicle type
+      subscription = goApp.supabase
+        .channel('new-requests')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'trips',
+          filter: `status=eq.searching`
+        }, (payload) => {
+          if (payload.new.vehicle_type === driver.vehicle_type) {
+            setPendingRequest(payload.new);
+          }
+        })
+        .subscribe();
     }
+    return () => { if (subscription) subscription.unsubscribe(); };
+  }, [isOnline, !!activeTrip, driver?.vehicle_type]);
+
+  useEffect(() => {
+    let subscription = null;
+    if (activeTrip?.id) {
+      subscription = goApp.subscriptions.trip(activeTrip.id, (newTrip) => {
+        // Solo actualizamos si el estado o datos clave han cambiado para evitar bucles
+        if (newTrip.status !== activeTrip?.status || newTrip.driver_id !== activeTrip?.driver_id) {
+          setActiveTrip(newTrip);
+        }
+
+        if (newTrip.status === 'completed' && !newTrip.driver_rating) {
+          setShowRating(true);
+        }
+        if (['cancelled_passenger', 'cancelled_driver'].includes(newTrip.status)) {
+          handleTripEnd();
+        }
+      });
+    }
+    return () => { if (subscription) subscription.unsubscribe(); };
   }, [activeTrip?.id]);
+
+  const handleTripEnd = async () => {
+    setActiveTrip(null);
+    if (driver) {
+      await goApp.entities.Driver.update(driver.id, { is_available: true });
+    }
+  };
 
   const loadDriverData = async () => {
     try {
@@ -54,11 +108,10 @@ export default function DriverHome() {
       setUser(currentUser);
 
       // Check for existing driver profile
-      const drivers = await goApp.entities.Driver.filter({ email: currentUser.email });
+      const drivers = await goApp.entities.Driver.filter({ id: currentUser.id });
+
       if (drivers.length > 0) {
         setDriver(drivers[0]);
-        // setIsOnline(drivers[0].is_online); // Optional: Remember state
-
         // Check for active trip
         const trips = await goApp.entities.Trip.filter({
           driver_id: drivers[0].id,
@@ -67,15 +120,17 @@ export default function DriverHome() {
         if (trips.length > 0) {
           setActiveTrip(trips[0]);
         }
-
-        // Load today's stats
         loadTodayStats(drivers[0].id);
       } else {
-        // Redirect to registration
-        navigate(createPageUrl('DriverRegister'));
+        // En lugar de redirigir inmediatamente, marcamos que falta el perfil
+        // Esto rompe el bucle si la redirección fallara por alguna razón
+        console.warn('Driver profile not found for authenticated user');
+        setIsProfileMissing(true);
       }
     } catch (error) {
       console.error('Error loading driver:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -123,23 +178,6 @@ export default function DriverHome() {
     }
   };
 
-  const checkForRequests = async () => {
-    if (!driver || pendingRequest || activeTrip) return;
-
-    try {
-      const trips = await goApp.entities.Trip.filter({
-        status: 'searching',
-        vehicle_type: driver.vehicle_type
-      });
-
-      if (trips.length > 0) {
-        setPendingRequest(trips[0]);
-      }
-    } catch (error) {
-      console.error('Error checking requests:', error);
-    }
-  };
-
   const acceptRequest = async () => {
     if (!pendingRequest || !driver) return;
 
@@ -165,24 +203,6 @@ export default function DriverHome() {
     setPendingRequest(null);
   };
 
-  const refreshTrip = async () => {
-    if (!activeTrip?.id) return;
-    try {
-      const trips = await goApp.entities.Trip.filter({ id: activeTrip.id });
-      if (trips.length > 0) {
-        setActiveTrip(trips[0]);
-        if (trips[0].status === 'completed' && !trips[0].driver_rating) {
-          setShowRating(true);
-        }
-        if (['cancelled_passenger', 'cancelled_driver'].includes(trips[0].status)) {
-          setActiveTrip(null);
-          await goApp.entities.Driver.update(driver.id, { is_available: true });
-        }
-      }
-    } catch (error) {
-      console.error('Error refreshing trip:', error);
-    }
-  };
 
   const updateTripStatus = async (newStatus) => {
     if (!activeTrip) return;
@@ -298,6 +318,41 @@ export default function DriverHome() {
         return null;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isProfileMissing) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 text-center">
+        <div className="max-w-md space-y-6">
+          <div className="w-20 h-20 bg-[#FFD700]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User size={40} className="text-[#FFD700]" />
+          </div>
+          <h2 className="text-3xl font-bold">Perfil Incompleto</h2>
+          <p className="text-gray-400">Hemos detectado que tu cuenta no tiene un perfil de conductor asociado. Por favor, completa tu registro para empezar.</p>
+          <Button
+            onClick={() => navigate(createPageUrl('DriverRegister'))}
+            className="w-full bg-[#FFD700] text-black font-bold h-14 rounded-xl"
+          >
+            Completar Registro
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => goApp.auth.logout().then(() => navigate(createPageUrl('Home')))}
+            className="w-full text-gray-500"
+          >
+            Cerrar Sesión
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden relative">
@@ -464,23 +519,50 @@ export default function DriverHome() {
             {/* Gradient Fade to connect map with bottom panel smoothly */}
             <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
-            {/* Offline Overlay */}
-            {!isOnline && !activeTrip && (
+            {/* Offline / Pending Overlay */}
+            {!activeTrip && (
               <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
-                <div className="relative mb-8 group cursor-pointer" onClick={toggleOnline}>
-                  {/* Pulsing Rings */}
-                  <div className="absolute inset-0 bg-[#FFD700] rounded-full opacity-20 animate-ping duration-[3s]" />
-                  <div className="absolute inset-[-20px] bg-[#FFD700] rounded-full opacity-10 blur-xl group-hover:opacity-30 transition-opacity" />
-
-                  <div className="w-24 h-24 bg-[#1A1A1A] rounded-full border-4 border-[#333] group-hover:border-[#FFD700] flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-105 active:scale-95">
-                    <Power size={36} className="text-gray-500 group-hover:text-[#FFD700] transition-colors" />
+                {driver?.status === 'pending' ? (
+                  <div className="bg-black/80 p-8 rounded-[32px] border border-[#FFD700]/20 max-w-sm text-center space-y-6 shadow-2xl">
+                    <div className="w-20 h-20 bg-[#FFD700]/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <ShieldCheck size={40} className="text-[#FFD700] animate-pulse" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white">Cuenta en revisión</h3>
+                    <p className="text-gray-400">
+                      ¡Hola {driver?.first_name}! Estamos verificando tus documentos. Te notificaremos en cuanto puedas empezar a conducir. 🚀
+                    </p>
+                    <div className="pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate(createPageUrl('Home'))}
+                        className="border-white/10 text-white hover:bg-white/5"
+                      >
+                        Volver al inicio
+                      </Button>
+                    </div>
                   </div>
-                </div>
-
-                <h3 className="text-2xl font-bold text-white mb-2">Estás desconectado</h3>
-                <p className="text-gray-400 text-center max-w-xs leading-relaxed">
-                  Toca el botón para conectarte y empezar a recibir solicitudes de viaje.
-                </p>
+                ) : !isOnline ? (
+                  <>
+                    <div className="relative mb-8 group cursor-pointer" onClick={toggleOnline}>
+                      <div className="absolute inset-0 bg-[#FFD700] rounded-full opacity-20 animate-ping duration-[3s]" />
+                      <div className="absolute inset-[-20px] bg-[#FFD700] rounded-full opacity-10 blur-xl group-hover:opacity-30 transition-opacity" />
+                      <div className="w-24 h-24 bg-[#1A1A1A] rounded-full border-4 border-[#333] group-hover:border-[#FFD700] flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-105 active:scale-95">
+                        <Power size={36} className="text-gray-500 group-hover:text-[#FFD700] transition-colors" />
+                      </div>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Estás desconectado</h3>
+                    <p className="text-gray-400 text-center max-w-xs leading-relaxed">
+                      Toca el botón para conectarte y empezar a recibir solicitudes de viaje.
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-center animate-pulse">
+                    <div className="w-16 h-16 bg-[#FFD700]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Navigation size={32} className="text-[#FFD700]" />
+                    </div>
+                    <p className="text-[#FFD700] font-medium tracking-widest uppercase text-sm">Buscando solicitudes...</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

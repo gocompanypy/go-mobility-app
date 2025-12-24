@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
@@ -27,6 +27,8 @@ export default function DriverRegister() {
         first_name: '',
         last_name: '',
         phone: '',
+        email: '',
+        password: '',
 
         // Vehicle
         vehicle_type: 'economy',
@@ -39,6 +41,7 @@ export default function DriverRegister() {
         // Documents
         license_number: '',
         license_expiry: '',
+        license_status: 'pending', // pending, uploading, uploaded
     });
 
     useEffect(() => {
@@ -72,11 +75,11 @@ export default function DriverRegister() {
     const isStepValid = () => {
         switch (currentStep) {
             case 0:
-                return formData.first_name && formData.last_name && formData.phone && /^09\d{8}$/.test(formData.phone);
+                return formData.first_name && formData.last_name && formData.phone && /^09\d{8}$/.test(formData.phone) && formData.email && formData.password.length >= 6;
             case 1:
                 return formData.vehicle_make && formData.vehicle_model && formData.vehicle_plate && formData.vehicle_color;
             case 2:
-                return formData.license_number;
+                return formData.license_number && formData.license_status === 'uploaded';
             default:
                 return false;
         }
@@ -99,18 +102,18 @@ export default function DriverRegister() {
 
         try {
             // Usamos el registro de Auth (que maneja auth + profile DB)
-            await goApp.auth.register(formData.phone, '123456', {
+            await goApp.auth.register(formData.phone, formData.password, {
                 role: 'driver',
                 first_name: formData.first_name,
                 last_name: formData.last_name,
                 phone: formData.phone,
+                email: formData.email,
                 vehicle_type: formData.vehicle_type,
                 vehicle_make: formData.vehicle_make,
                 vehicle_model: formData.vehicle_model,
                 vehicle_year: formData.vehicle_year,
                 vehicle_color: formData.vehicle_color,
                 vehicle_plate: formData.vehicle_plate,
-                // Document data could be handled here or separately
                 license_number: formData.license_number,
                 license_expiry: formData.license_expiry
             });
@@ -237,6 +240,27 @@ export default function DriverRegister() {
                                     </div>
                                     <p className="text-xs text-gray-500 ml-1">Te enviaremos un código de verificación.</p>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label className="text-gray-400 ml-1">Correo electrónico</Label>
+                                    <Input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => updateForm('email', e.target.value)}
+                                        placeholder="juan@ejemplo.com"
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-gray-400 ml-1">Contraseña</Label>
+                                    <Input
+                                        type="password"
+                                        value={formData.password}
+                                        onChange={(e) => updateForm('password', e.target.value)}
+                                        placeholder="••••••••"
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
+                                    />
+                                    <p className="text-xs text-gray-500 ml-1">Mínimo 6 caracteres.</p>
+                                </div>
                             </div>
                         )}
 
@@ -362,13 +386,30 @@ export default function DriverRegister() {
                                     <div className="mt-4">
                                         <Label className="text-gray-400 ml-1 mb-2 block">Foto de la Licencia (Frente y Dorso)</Label>
                                         <div
-                                            className="border-2 border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center bg-white/5 hover:bg-white/[0.07] hover:border-[#FFD700]/30 transition-all cursor-pointer group"
+                                            onClick={() => {
+                                                updateForm('license_status', 'uploading');
+                                                setTimeout(() => updateForm('license_status', 'uploaded'), 1500);
+                                            }}
+                                            className={`
+                                                border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer group relative overflow-hidden
+                                                ${formData.license_status === 'uploaded' ? 'border-green-500/50 bg-green-500/5' : 'border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-[#FFD700]/30'}
+                                            `}
                                         >
-                                            <div className="w-16 h-16 rounded-full bg-black flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                                <Upload size={24} className="text-[#FFD700]" />
+                                            {formData.license_status === 'uploading' && (
+                                                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-10">
+                                                    <div className="w-8 h-8 border-2 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
+                                                </div>
+                                            )}
+
+                                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 transition-transform ${formData.license_status === 'uploaded' ? 'bg-green-500 text-black' : 'bg-black text-[#FFD700] group-hover:scale-110'}`}>
+                                                {formData.license_status === 'uploaded' ? <Check size={32} /> : <Upload size={24} />}
                                             </div>
-                                            <span className="text-white font-medium mb-1">Toca para subir foto</span>
-                                            <span className="text-xs text-gray-500">JPG, PNG o PDF (Max 5MB)</span>
+                                            <span className="text-white font-medium mb-1">
+                                                {formData.license_status === 'uploaded' ? '¡Licencia cargada!' : 'Toca para subir foto'}
+                                            </span>
+                                            <span className="text-xs text-gray-500">
+                                                {formData.license_status === 'uploaded' ? 'Puedes cambiarla haciendo clic de nuevo' : 'JPG, PNG o PDF (Max 5MB)'}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

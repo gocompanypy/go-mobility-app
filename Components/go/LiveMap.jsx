@@ -41,10 +41,19 @@ function MapUpdater({ center, type }) {
     const map = useMap();
     useEffect(() => {
         if (center) {
-            map.flyTo(center, 15, {
-                duration: 1.5,
-                easeLinearity: 0.25
-            });
+            const currentCenter = map.getCenter();
+            const distance = Math.sqrt(
+                Math.pow(currentCenter.lat - center[0], 2) +
+                Math.pow(currentCenter.lng - center[1], 2)
+            );
+
+            // Only fly if the change is significant (> 0.0001 degrees ~ 11 meters)
+            if (distance > 0.0001) {
+                map.flyTo(center, 15, {
+                    duration: 1.5,
+                    easeLinearity: 0.25
+                });
+            }
         }
     }, [center, map]);
     return null;
@@ -88,13 +97,16 @@ const LiveMap = ({
     // Simulated nearby drivers if none provided
     const [simulatedDrivers, setSimulatedDrivers] = useState([]);
 
+    // Use stringified coordinates for stable comparison
+    const nearbyDriversKey = JSON.stringify(nearbyDrivers.map(d => ({ id: d.id, lat: d.lat, lng: d.lng })));
+
     useEffect(() => {
         if (nearbyDrivers.length > 0) {
             setSimulatedDrivers(nearbyDrivers);
         } else {
             setSimulatedDrivers([]);
         }
-    }, [pickupLat, pickupLng, nearbyDrivers]);
+    }, [pickupLat, pickupLng, nearbyDriversKey]);
 
     return (
         <div className={`relative w-full h-full ${className}`}>

@@ -57,9 +57,9 @@ export default function AdminDashboard() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const todayTrips = trips.filter(t => new Date(t.created_date) >= today);
+      const todayTrips = trips.filter(t => new Date(t.created_at || t.created_date) >= today);
       const completedTrips = trips.filter(t => t.status === 'completed');
-      const cancelledTrips = trips.filter(t => t.status === 'cancelled');
+      const cancelledTrips = trips.filter(t => ['cancelled', 'cancelled_passenger', 'cancelled_driver'].includes(t.status));
       const activeTrips = trips.filter(t =>
         ['searching', 'accepted', 'arrived', 'in_progress'].includes(t.status)
       );
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
         nextDate.setDate(nextDate.getDate() + 1);
 
         const dayTrips = completedTrips.filter(t => {
-          const tripDate = new Date(t.completed_at || t.created_date);
+          const tripDate = new Date(t.completed_at || t.created_at || t.created_date);
           return tripDate >= date && tripDate < nextDate;
         });
 

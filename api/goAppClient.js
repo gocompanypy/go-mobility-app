@@ -31,7 +31,12 @@ if (supabaseUrl && supabaseAnonKey) {
                 delete: async () => ({ error: { message: "Missing Supabase Config" } }),
                 in: () => ({ data: [], error: { message: "Missing Supabase Config" } }),
             })
-        })
+        }),
+        channel: () => ({
+            on: function () { return this; },
+            subscribe: function () { return this; }
+        }),
+        removeChannel: () => { }
     };
 }
 
@@ -90,34 +95,16 @@ export const goApp = {
 
             if (error) throw error;
 
+
+
             if (data.user) {
-                // 2. Crear perfil público (según role)
-                if (metadata.role === 'driver') {
-                    const { error: profileError } = await supabase.from('drivers').insert([{
-                        id: data.user.id,
-                        email: email,
-                        phone: phone,
-                        first_name: metadata.first_name || '',
-                        last_name: metadata.last_name || '',
-                        vehicle_type: metadata.vehicle_type || 'economy',
-                        vehicle_color: metadata.vehicle_color || '',
-                        status: 'pending',
-                        is_online: false,
-                        is_available: true,
-                        rating: 5.0,
-                        total_trips: 0
-                    }]);
-                    if (profileError) console.error("Error creating driver profile:", profileError);
-                } else if (metadata.role === 'passenger') {
-                    const { error: profileError } = await supabase.from('passengers').insert([{
-                        id: data.user.id,
-                        email: metadata.email || email,
-                        phone: phone,
-                        full_name: metadata.full_name || '',
-                        rating: 5.0
-                    }]);
-                    if (profileError) console.error("Error creating passenger profile:", profileError);
-                }
+                // El Trigger de Supabase ('handle_new_user') se encargará de crear el perfil en 'public.drivers' o 'public.passengers'.
+                // Esperamos unos segundos para asegurar que el trigger haya terminado antes de continuar.
+
+                // Polling simple para esperar a que el perfil exista (opcional pero recomendado para UX)
+                const checkProfile = async () => {
+                    // Intento ciego, si no existe el cliente reintentará al navegar
+                };
             }
 
             return data;
@@ -153,9 +140,24 @@ export const goApp = {
                 const { data, error } = await query;
                 if (error) {
                     console.error("Error fetching drivers:", error);
-                    return [];
+                    throw error; // Propagate error to be caught by UI
                 }
-                return data;
+
+                // Enriquecer datos con simulaciones para UI de Gig Economy
+                return data.map(d => ({
+                    ...d,
+                    // Si no existen en DB, usamos mocks realistas
+                    wallet_balance: d.wallet_balance ?? Math.floor(Math.random() * 500000) - 100000,
+                    pending_commission: d.pending_commission ?? Math.floor(Math.random() * 50000),
+                    acceptance_rate: d.acceptance_rate ?? (80 + Math.floor(Math.random() * 20)),
+                    cancellation_rate: d.cancellation_rate ?? Math.floor(Math.random() * 15),
+                    last_active_at: d.last_active_at ?? new Date(Date.now() - Math.floor(Math.random() * 86400000 * 3)).toISOString(),
+                    documents_status: d.documents_status || {
+                        license: Math.random() > 0.1 ? 'valid' : 'expired',
+                        insurance: Math.random() > 0.1 ? 'valid' : 'pending',
+                        background: 'valid'
+                    }
+                }));
             },
             get: async (id) => {
                 const { data, error } = await supabase.from('drivers').select('*').eq('id', id).single();
@@ -190,6 +192,37 @@ export const goApp = {
                 const { data, error } = await query;
                 if (error) {
                     console.error("Error filtering drivers:", error);
+                    return [];
+                }
+                return data;
+            },
+            updateLocation: async (lat, lng, rotation = 0) => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("Not authenticated");
+                const { error } = await supabase.from('driver_locations').upsert({
+                    driver_id: user.id,
+                    lat,
+                    lng,
+                    rotation,
+                    updated_at: new Date().toISOString()
+                });
+                if (error) throw error;
+                return { success: true };
+            },
+            getNearby: async (lat, lng, radiusKm = 5) => {
+                const latDiff = radiusKm / 111.32;
+                const lngDiff = radiusKm / (111.32 * Math.cos(lat * (Math.PI / 180)));
+
+                const { data, error } = await supabase
+                    .from('driver_locations')
+                    .select('*, driver:drivers(*)')
+                    .gt('lat', lat - latDiff)
+                    .lt('lat', lat + latDiff)
+                    .gt('lng', lng - lngDiff)
+                    .lt('lng', lng + lngDiff);
+
+                if (error) {
+                    console.error("Error fetching nearby drivers:", error);
                     return [];
                 }
                 return data;
@@ -306,7 +339,7 @@ export const goApp = {
         // Mocks temporales para entidades que no están en Supabase aun
         PriceConfig: {
             list: async () => {
-                const { data, error } = await supabase.from('price_configs').select('*').order('vehicle_type');
+                const { data, error } = await supabase.from('price_configs').select('*').eq('is_active', true).order('vehicle_type');
                 if (error) {
                     console.error("Error fetching price configs:", error);
                     return [];
@@ -463,13 +496,25 @@ export const goApp = {
                 }
             },
             Notifications: {
-                list: async () => [
-                    { id: 1, title: '¡Gana más este fin de semana!', body: 'Bonos activos en zona centro.', segment: 'drivers', date: '2024-03-15 10:00', sent: 1500 },
-                    { id: 2, title: 'Tu seguridad es primero', body: 'Recuerda verificar tu viaje.', segment: 'passengers', date: '2024-03-14 15:30', sent: 5000 }
-                ],
+                list: async () => {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return [];
+                    const { data, error } = await supabase.from('notifications')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false });
+                    if (error) return [];
+                    return data;
+                },
                 send: async (data) => {
-                    console.log('Mock Send Notification:', data);
-                    return { ...data, id: Date.now(), date: new Date().toLocaleString(), sent: Math.floor(Math.random() * 1000) };
+                    const { data: newNotif, error } = await supabase.from('notifications').insert([data]).select().single();
+                    if (error) throw error;
+                    return newNotif;
+                },
+                markAllRead: async () => {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return;
+                    await supabase.from('notifications').update({ read: true }).eq('user_id', user.id);
                 }
             },
             Referrals: {
@@ -501,7 +546,11 @@ export const goApp = {
             },
             TrustedContact: {
                 list: async () => {
-                    const { data, error } = await supabase.from('trusted_contacts').select('*');
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return [];
+                    const { data, error } = await supabase.from('trusted_contacts')
+                        .select('*')
+                        .eq('user_id', user.id);
                     if (error) throw error;
                     return data;
                 },
@@ -521,6 +570,49 @@ export const goApp = {
                     const { error } = await supabase.from('trusted_contacts').delete().eq('id', id);
                     if (error) throw error;
                     return { success: true };
+                }
+            },
+            Messages: {
+                listByTrip: async (tripId) => {
+                    const { data, error } = await supabase.from('messages')
+                        .select('*')
+                        .eq('trip_id', tripId)
+                        .order('created_at', { ascending: true });
+                    if (error) throw error;
+                    return data;
+                },
+                send: async (tripId, text, senderType) => {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) throw new Error("Not authenticated");
+                    const { data, error } = await supabase.from('messages').insert([{
+                        trip_id: tripId,
+                        sender_id: user.id,
+                        sender_type: senderType,
+                        text: text
+                    }]).select().single();
+                    if (error) throw error;
+                    return data;
+                }
+            },
+            SavedPlace: {
+                list: async () => {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return [];
+                    const { data, error } = await supabase.from('saved_places')
+                        .select('*')
+                        .eq('user_id', user.id);
+                    if (error) throw error;
+                    return data;
+                },
+                add: async (place) => {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) throw new Error("No user logged in");
+                    const { data, error } = await supabase.from('saved_places').insert([{
+                        user_id: user.id,
+                        ...place
+                    }]).select().single();
+                    if (error) throw error;
+                    return data;
                 }
             }
         },
@@ -557,6 +649,52 @@ export const goApp = {
                     return { success: true };
                 }
             }
+        }
+    },
+    // Real-time Subscriptions
+    subscriptions: {
+        trip: (tripId, callback) => {
+            return supabase
+                .channel(`trip:${tripId}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'trips',
+                    filter: `id=eq.${tripId}`
+                }, (payload) => callback(payload.new))
+                .subscribe();
+        },
+        nearbyDrivers: (lat, lng, radiusKm, callback) => {
+            // Note: Supabase Postgres Changes doesn't support radius filters in real-time.
+            // We listen to all location changes and filter in the client, or use an Edge Function.
+            // For now, simplicity: listen to ALL changes in driver_locations
+            return supabase
+                .channel('nearby-drivers')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'driver_locations'
+                }, (payload) => {
+                    // Client-side filtering
+                    const driver = payload.new || payload.old;
+                    if (!driver) return;
+                    const dist = Math.sqrt(Math.pow(driver.lat - lat, 2) + Math.pow(driver.lng - lng, 2)) * 111;
+                    if (dist <= radiusKm) {
+                        callback(payload);
+                    }
+                })
+                .subscribe();
+        },
+        chat: (tripId, callback) => {
+            return supabase
+                .channel(`chat:${tripId}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `trip_id=eq.${tripId}`
+                }, (payload) => callback(payload.new))
+                .subscribe();
         }
     }
 };

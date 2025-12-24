@@ -68,10 +68,11 @@ export default function App() {
                 {/* Driver Auth Flow */}
                 <Route path="/driver/welcome" element={<DriverWelcome />} />
                 <Route path="/driver/login" element={<DriverLogin />} />
-                <Route path="/driver/signup" element={<DriverSignup />} />
+                <Route path="/driver/signup" element={<Navigate to="/driver/register" replace />} />
                 <Route path="/driver/register" element={<DriverRegister />} />
-                <Route path="/driver/documents" element={<DriverDocuments />} />
+                <Route path="/driver/documents" element={<Navigate to="/driver/register" replace />} />
                 <Route path="/driver/success" element={<DriverSuccess />} />
+                <Route path="/driver" element={<Navigate to="/driver/welcome" replace />} />
 
                 {/* Passenger Routes (Standalone Layout) */}
                 <Route path="/passenger/home" element={<PassengerHome />} />
