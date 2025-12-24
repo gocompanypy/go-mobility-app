@@ -166,7 +166,7 @@ const AddressInput = ({ savedPlaces = [], onSelect, type, ...props }) => {
             <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                     {type === 'pickup' ? (
-                        <div className="w-2 h-2 rounded-full bg-[#00D4B1] ring-4 ring-[#00D4B1]/20" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-white ring-4 ring-[#FFD700]/30 shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
                     ) : (
                         <div className="w-2 h-2 rounded-full bg-[#FFD700] ring-4 ring-[#FFD700]/20" />
                     )}

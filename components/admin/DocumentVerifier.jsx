@@ -88,7 +88,7 @@ export default function DocumentVerifier({ driver, isOpen, onClose, onApprove, o
                                 Rechazar
                             </Button>
                             <Button
-                                className="bg-[#00D4B1] hover:bg-[#00B89C] text-black"
+                                className="bg-[#FFD700] hover:bg-[#FFA500] text-black"
                                 onClick={() => onApprove(driver.id)}
                                 disabled={!allDocsViewed}
                                 title={!allDocsViewed ? "Debes revisar todos los documentos primero" : ""}
@@ -109,8 +109,8 @@ export default function DocumentVerifier({ driver, isOpen, onClose, onApprove, o
                                 key={doc.id}
                                 onClick={() => handleDocView(doc.id)}
                                 className={`w-full text-left p-3 rounded-lg border transition-all relative group ${activeDoc === doc.id
-                                        ? 'bg-[#00D4B1]/10 border-[#00D4B1] text-[#00D4B1]'
-                                        : 'border-transparent hover:bg-[#252538] text-gray-300'
+                                    ? 'bg-[#FFD700]/10 border-[#FFD700] text-[#FFD700]'
+                                    : 'border-transparent hover:bg-[#252538] text-gray-300'
                                     }`}
                             >
                                 <div className="flex justify-between items-start">
@@ -138,7 +138,7 @@ export default function DocumentVerifier({ driver, isOpen, onClose, onApprove, o
                         {currentDoc?.contextData && (
                             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-black/80 backdrop-blur-md px-6 py-2 rounded-full border border-gray-800 flex items-center gap-3 shadow-xl">
                                 <span className="text-gray-400 text-sm font-medium">{currentDoc.contextData.label}:</span>
-                                <span className="text-[#00D4B1] font-mono font-bold text-lg">{currentDoc.contextData.value || 'N/A'}</span>
+                                <span className="text-[#FFD700] font-mono font-bold text-lg">{currentDoc.contextData.value || 'N/A'}</span>
                             </div>
                         )}
 

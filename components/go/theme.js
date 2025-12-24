@@ -1,9 +1,9 @@
 export const theme = {
     tripStatuses: {
-        pending: { label: 'Pendiente', color: '#FEB019' },
+        pending: { label: 'Pendiente', color: '#FFD700' },
         scheduled: { label: 'Programado', color: '#008FFB' },
         in_progress: { label: 'En Curso', color: '#00E396' },
-        completed: { label: 'Completado', color: '#00D4B1' },
+        completed: { label: 'Completado', color: '#FFD700' },
         cancelled: { label: 'Cancelado', color: '#FF4560' },
         searching: { label: 'Buscando', color: '#775DD0' }
     },

@@ -15,8 +15,8 @@ const TripStatusCard = ({ trip, userType = 'passenger', onCancel, onChat, onCall
         switch (status) {
             case 'searching': return 'text-yellow-500';
             case 'accepted': return 'text-blue-500';
-            case 'arrived': return 'text-green-500';
-            case 'in_progress': return 'text-emerald-500';
+            case 'arrived': return 'text-[#FFD700] underline decoration-gold-glow';
+            case 'in_progress': return 'text-[#FFD700] font-black';
             default: return 'text-gray-400';
         }
     };
@@ -52,7 +52,7 @@ const TripStatusCard = ({ trip, userType = 'passenger', onCancel, onChat, onCall
             <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
                     <div className={cn("w-2 h-2 rounded-full animate-pulse",
-                        trip.status === 'searching' ? "bg-yellow-500" : "bg-[#00D4B1]"
+                        trip.status === 'searching' ? "bg-yellow-500" : "bg-[#FFD700]"
                     )} />
                     <span className={cn("font-bold", getStatusColor(trip.status))}>
                         {getStatusText(trip.status)}

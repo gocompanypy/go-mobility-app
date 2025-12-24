@@ -99,7 +99,7 @@ export default function PassengerRewards() {
     const CurrentIcon = currentTierData.icon;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#00D4B1] selection:text-black">
+        <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#FFD700] selection:text-black">
             {/* Ambient Background */}
             <div className="fixed inset-0 pointer-events-none">
                 <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-gradient-to-b from-[#FFD700]/10 to-transparent blur-3xl opacity-50" />
@@ -180,7 +180,7 @@ export default function PassengerRewards() {
                                     <Sparkles size={16} className="text-yellow-400 animate-pulse" />
                                 </h3>
                                 <p className="text-gray-400 text-sm mt-1">
-                                    Te faltan <span className="text-[#00D4B1] font-bold">{nextTierData.required - (reward?.lifetime_points || 0)}</span> puntos
+                                    Te faltan <span className="text-[#FFD700] font-bold">{nextTierData.required - (reward?.lifetime_points || 0)}</span> puntos
                                 </p>
                             </div>
                             <span className="text-2xl font-bold text-white">{Math.round(progress)}%</span>
@@ -188,7 +188,7 @@ export default function PassengerRewards() {
                         <div className="h-3 bg-[#252538] rounded-full overflow-hidden relative">
                             {/* Animated Progress Bar */}
                             <div
-                                className="h-full bg-gradient-to-r from-[#00D4B1] to-[#008F7A] rounded-full relative"
+                                className="h-full bg-gradient-to-r from-[#FFD700] to-[#FFA500] rounded-full relative"
                                 style={{ width: `${progress}%`, transition: 'width 1s ease-out' }}
                             >
                                 <div className="absolute top-0 right-0 w-2 h-full bg-white/50 blur-[2px]" />
@@ -200,12 +200,12 @@ export default function PassengerRewards() {
                 {/* Actions Grid */}
                 <div>
                     <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                        <TrendingUp size={20} className="text-[#00D4B1]" />
+                        <TrendingUp size={20} className="text-[#FFD700]" />
                         Boostea tus puntos
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {[
-                            { title: 'Completa un viaje', points: '+10 pts', icon: Gift, color: 'text-[#00D4B1]', bg: 'bg-[#00D4B1]/10' },
+                            { title: 'Completa un viaje', points: '+10 pts', icon: Gift, color: 'text-[#FFD700]', bg: 'bg-[#FFD700]/10' },
                             { title: 'Califica 5 estrellas', points: '+5 pts', icon: Star, color: 'text-[#FFD700]', bg: 'bg-[#FFD700]/10' },
                             { title: 'Invita amigos', points: '+50 pts', icon: Zap, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                         ].map((item, i) => (
@@ -214,7 +214,7 @@ export default function PassengerRewards() {
                                     <item.icon size={24} className={item.color} />
                                 </div>
                                 <div className="text-left">
-                                    <p className="font-bold text-white group-hover:text-[#00D4B1] transition-colors">{item.title}</p>
+                                    <p className="font-bold text-white group-hover:text-[#FFD700] transition-colors">{item.title}</p>
                                     <p className="text-xs text-gray-400">{item.points}</p>
                                 </div>
                                 <ChevronRight className="ml-auto text-gray-600 group-hover:text-white transition-colors" size={18} />
@@ -238,7 +238,7 @@ export default function PassengerRewards() {
                                     className={`
                                         group relative overflow-hidden rounded-2xl border transition-all duration-300
                                         ${isCurrent
-                                            ? 'bg-[#1A1A2E] border-[#00D4B1] shadow-[0_0_20px_-10px_#00D4B1]'
+                                            ? 'bg-[#1A1A2E] border-[#FFD700] shadow-[0_0_20px_-10px_#FFD700]'
                                             : isUnlocked
                                                 ? 'bg-[#12121A]/80 border-white/10 hover:border-white/20'
                                                 : 'bg-[#0A0A0E] border-white/5 opacity-60 hover:opacity-100'}
@@ -258,7 +258,7 @@ export default function PassengerRewards() {
                                                     {tier.name}
                                                 </h4>
                                                 {isCurrent && (
-                                                    <span className="text-[10px] font-bold px-2 py-1 bg-[#00D4B1] text-black rounded-full uppercase tracking-wide">
+                                                    <span className="text-[10px] font-bold px-2 py-1 bg-[#FFD700] text-black rounded-full uppercase tracking-wide">
                                                         Actual
                                                     </span>
                                                 )}

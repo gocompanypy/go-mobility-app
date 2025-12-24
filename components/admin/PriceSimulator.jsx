@@ -44,7 +44,7 @@ export default function PriceSimulator({ configs }) {
         <Card className="bg-[#1A1A2E] border-[#2D2D44] mt-8">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
-                    <Calculator className="text-[#00D4B1]" />
+                    <Calculator className="text-[#FFD700]" />
                     Simulador de Tarifas en Tiempo Real
                 </CardTitle>
                 <p className="text-gray-400 text-sm">
@@ -58,9 +58,9 @@ export default function PriceSimulator({ configs }) {
                         <div className="space-y-4">
                             <div className="flex justify-between">
                                 <Label className="text-white flex items-center gap-2">
-                                    <MapPin size={16} className="text-[#00D4B1]" /> Distancia (km)
+                                    <MapPin size={16} className="text-[#FFD700]" /> Distancia (km)
                                 </Label>
-                                <span className="text-[#00D4B1] font-bold">{distance.toFixed(1)} km</span>
+                                <span className="text-[#FFD700] font-bold">{distance.toFixed(1)} km</span>
                             </div>
                             <Slider
                                 value={[distance]}
@@ -75,9 +75,9 @@ export default function PriceSimulator({ configs }) {
                         <div className="space-y-4">
                             <div className="flex justify-between">
                                 <Label className="text-white flex items-center gap-2">
-                                    <Clock size={16} className="text-[#00D4B1]" /> Duración (min)
+                                    <Clock size={16} className="text-[#FFD700]" /> Duración (min)
                                 </Label>
-                                <span className="text-[#00D4B1] font-bold">{duration} min</span>
+                                <span className="text-[#FFD700] font-bold">{duration} min</span>
                             </div>
                             <Slider
                                 value={[duration]}
@@ -120,7 +120,7 @@ export default function PriceSimulator({ configs }) {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[#00D4B1] font-bold text-lg">
+                                        <p className="text-[#FFD700] font-bold text-lg">
                                             Gs. {Math.round(res.estimatedPrice).toLocaleString('es-PY')}
                                         </p>
                                         {res.estimatedPrice <= res.minimum_fare && (

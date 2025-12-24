@@ -9,7 +9,7 @@ export default function PassengerDashboard({ user, onSelectService, onSearchClic
             id: 'ride',
             title: 'Viajes',
             icon: Car,
-            gradient: 'from-[#FFD700] to-[#F5C518]',
+            gradient: 'from-[#FFD700] to-[#FFA500]',
             iconColor: 'text-black',
             shadow: 'shadow-[0_10px_30px_rgba(255,215,0,0.3)]',
             colSpan: 'col-span-1'

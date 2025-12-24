@@ -77,7 +77,7 @@ export default function PassengerProfile() {
                         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] flex items-center justify-center border-4 border-black shadow-xl">
                             <User size={40} className="text-black" />
                         </div>
-                        <button className="absolute bottom-0 right-0 bg-[#00D4B1] p-2 rounded-full text-black hover:bg-[#00B89C] transition-colors">
+                        <button className="absolute bottom-0 right-0 bg-[#FFD700] p-2 rounded-full text-black hover:bg-[#FFA500] transition-colors shadow-lg shadow-[#FFD700]/20">
                             <Camera size={16} />
                         </button>
                     </div>

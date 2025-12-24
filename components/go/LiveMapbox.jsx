@@ -112,9 +112,9 @@ const LiveMapbox = ({
                             id="route-glow"
                             type="line"
                             paint={{
-                                'line-color': '#00D4B1',
+                                'line-color': '#FFD700',
                                 'line-width': 12,
-                                'line-opacity': 0.3,
+                                'line-opacity': 0.2,
                                 'line-blur': 10
                             }}
                             layout={{

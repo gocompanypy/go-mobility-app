@@ -113,7 +113,7 @@ export default function DriverHome() {
         is_available: newStatus,
       });
       if (newStatus) {
-        toast.success('¡Ahora estás disponible para recibir viajes! 🚗💨');
+        toast.success('¡Ahora estás disponible para recibir viajes! ✨🚕');
       } else {
         toast('Has pasado a modo desconectado.');
       }
@@ -334,14 +334,14 @@ export default function DriverHome() {
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
             </Button>
 
-            <div className={`flex items-center gap-3 px-1 py-1 rounded-full border transition-colors ${isOnline ? 'bg-[#00D4B1]/10 border-[#00D4B1]/30' : 'bg-white/5 border-white/10'}`}>
-              <span className={`text-xs font-bold uppercase tracking-wider px-2 transition-colors ${isOnline ? 'text-[#00D4B1]' : 'text-gray-400'}`}>
+            <div className={`flex items-center gap-3 px-1 py-1 rounded-full border transition-colors ${isOnline ? 'bg-[#FFD700]/10 border-[#FFD700]/30' : 'bg-white/5 border-white/10'}`}>
+              <span className={`text-xs font-bold uppercase tracking-wider px-2 transition-colors ${isOnline ? 'text-[#FFD700]' : 'text-gray-400'}`}>
                 {isOnline ? 'Online' : 'Offline'}
               </span>
               <Switch
                 checked={isOnline}
                 onCheckedChange={toggleOnline}
-                className="data-[state=checked]:bg-[#00D4B1]"
+                className="data-[state=checked]:bg-[#FFD700]"
               />
             </div>
           </div>
@@ -469,11 +469,11 @@ export default function DriverHome() {
               <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
                 <div className="relative mb-8 group cursor-pointer" onClick={toggleOnline}>
                   {/* Pulsing Rings */}
-                  <div className="absolute inset-0 bg-[#00D4B1] rounded-full opacity-20 animate-ping duration-[3s]" />
-                  <div className="absolute inset-[-20px] bg-[#00D4B1] rounded-full opacity-10 blur-xl group-hover:opacity-30 transition-opacity" />
+                  <div className="absolute inset-0 bg-[#FFD700] rounded-full opacity-20 animate-ping duration-[3s]" />
+                  <div className="absolute inset-[-20px] bg-[#FFD700] rounded-full opacity-10 blur-xl group-hover:opacity-30 transition-opacity" />
 
-                  <div className="w-24 h-24 bg-[#1A1A1A] rounded-full border-4 border-[#333] group-hover:border-[#00D4B1] flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-105 active:scale-95">
-                    <Power size={36} className="text-gray-500 group-hover:text-[#00D4B1] transition-colors" />
+                  <div className="w-24 h-24 bg-[#1A1A1A] rounded-full border-4 border-[#333] group-hover:border-[#FFD700] flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-105 active:scale-95">
+                    <Power size={36} className="text-gray-500 group-hover:text-[#FFD700] transition-colors" />
                   </div>
                 </div>
 

@@ -10,7 +10,8 @@
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 47 100% 50%; /* Gold #FFD700 */
+    --primary: 47 100% 50%;
+    /* Luxury Gold #FFD700 */
     --primary-foreground: 240 5.9% 10%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -22,24 +23,26 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 47 100% 50%; /* Gold Ring */
+    --ring: 47 100% 50%;
+    /* Gold Ring */
     --radius: 0.75rem;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Custom Gold Utilities */
+/* Luxury Gold Utilities */
 .gold-glow {
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.35);
 }
 
 .gold-gradient {
@@ -47,7 +50,7 @@
 }
 
 .gold-border {
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.25);
 }
 
 .custom-div-icon {

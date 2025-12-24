@@ -53,7 +53,7 @@ export default function Layout() {
                             to={item.path}
                             onClick={() => setIsSidebarOpen(false)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                ? 'bg-[#00D4B1]/10 text-[#00D4B1]'
+                                ? 'bg-[#FFD700]/10 text-[#FFD700]'
                                 : 'text-gray-400 hover:bg-[#252538] hover:text-white'
                                 }`}
                         >
