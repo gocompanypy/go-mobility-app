@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { goApp } from '@/api/goAppClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, User, Car, FileText, Check, Upload, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Car, FileText, Check, Upload, ShieldCheck, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,10 @@ export default function DriverRegister() {
     const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const [formData, setFormData] = useState({
         // Personal
@@ -72,10 +76,18 @@ export default function DriverRegister() {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
     const isStepValid = () => {
         switch (currentStep) {
             case 0:
-                return formData.first_name && formData.last_name && formData.phone && /^09\d{8}$/.test(formData.phone) && formData.email && formData.password.length >= 6;
+                return formData.first_name && formData.last_name && formData.phone && /^09\d{8}$/.test(formData.phone) && formData.password.length >= 6;
             case 1:
                 return formData.vehicle_make && formData.vehicle_model && formData.vehicle_plate && formData.vehicle_color;
             case 2:
@@ -97,32 +109,56 @@ export default function DriverRegister() {
         }
     };
 
-    const submitRegistration = async () => {
-        setIsSubmitting(true);
+    const submitRegistration = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        // Basic Validation
+        if (!formData.first_name || !formData.last_name || !formData.phone || !formData.password) {
+            setError("Por favor completa los campos obligatorios");
+            setIsLoading(false);
+            return;
+        }
 
         try {
-            // Usamos el registro de Auth (que maneja auth + profile DB)
-            await goApp.auth.register(formData.phone, formData.password, {
-                role: 'driver',
-                first_name: formData.first_name,
-                last_name: formData.last_name,
-                phone: formData.phone,
-                email: formData.email,
-                vehicle_type: formData.vehicle_type,
-                vehicle_make: formData.vehicle_make,
-                vehicle_model: formData.vehicle_model,
-                vehicle_year: formData.vehicle_year,
-                vehicle_color: formData.vehicle_color,
-                vehicle_plate: formData.vehicle_plate,
-                license_number: formData.license_number,
-                license_expiry: formData.license_expiry
+            // Handle Optional Email: Generate a dummy email if not provided
+            // This is required because Supabase Auth needs an email
+            const registrationEmail = formData.email?.trim() || `${formData.phone.replace(/\D/g, '')}@driver.placeholder.com`;
+
+            const { data, error: authError } = await goApp.auth.register({
+                email: registrationEmail,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: `${formData.first_name} ${formData.last_name}`,
+                        first_name: formData.first_name,
+                        last_name: formData.last_name,
+                        phone: formData.phone,
+                        email: formData.email, // Store actual email if provided
+                        role: 'driver',
+                        vehicle_type: formData.vehicle_type,
+                        vehicle_make: formData.vehicle_make,
+                        vehicle_model: formData.vehicle_model,
+                        vehicle_year: formData.vehicle_year,
+                        vehicle_color: formData.vehicle_color,
+                        vehicle_plate: formData.vehicle_plate,
+                        license_number: formData.license_number,
+                        license_expiry: formData.license_expiry
+                    }
+                }
             });
 
-            // Simulate slight delay for effect
+            if (authError) throw authError;
+
+            // Éxito: Mostrar pantalla de confirmación
+            setIsSuccess(true);
+
+            // Redirigir después de 4 segundos
             setTimeout(() => {
-                // Auto-login or redirect
-                navigate(createPageUrl('DriverHome'));
-            }, 1000);
+                navigate(createPageUrl('DriverLogin'));
+            }, 4000);
+
         } catch (error) {
             console.error('Error registering driver:', error);
             // Si el usuario ya existe, podríamos mostrar un mensaje específico
@@ -135,6 +171,40 @@ export default function DriverRegister() {
             setIsSubmitting(false);
         }
     };
+
+    if (isSuccess) {
+        return (
+            <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                {/* Background Effects */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FFD700]/10 rounded-full blur-[120px] pointer-events-none" />
+
+                <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="relative z-10 text-center max-w-sm"
+                >
+                    <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_-10px_rgba(34,197,94,0.5)]">
+                        <Check size={48} className="text-black" strokeWidth={3} />
+                    </div>
+
+                    <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                        ¡Datos Recibidos!
+                    </h2>
+
+                    <p className="text-gray-400 text-lg leading-relaxed mb-8">
+                        Hemos recibido tu solicitud correctamente. Nuestro equipo verificará tu documentación en menos de 24 horas.
+                    </p>
+
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 border-2 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-[#FFD700] font-medium animate-pulse">
+                            Redirigiendo...
+                        </span>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden font-sans">
@@ -202,65 +272,115 @@ export default function DriverRegister() {
                     >
                         {/* Personal Info */}
                         {currentStep === 0 && (
-                            <div className="space-y-5">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-gray-400 ml-1">Nombre</Label>
+                            <div className="p-6">
+                                <form onSubmit={submitRegistration} className="space-y-4" autoComplete="off">
+                                    {/* Trap for browser autofill */}
+                                    <input type="text" style={{ display: 'none' }} />
+                                    <input type="password" style={{ display: 'none' }} />
+
+                                    {/* Name Fields */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="firstName" className="text-xs uppercase tracking-wider font-semibold text-gray-500">Nombre</Label>
+                                            <Input
+                                                id="firstName"
+                                                name="firstName_new" // Changed name to confuse browser
+                                                value={formData.first_name}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
+                                                className="bg-[#0F0F1A] border-[#2D2D44] text-white focus:border-[#FFD700]/50 h-12 rounded-xl"
+                                                placeholder="Juan"
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="lastName" className="text-xs uppercase tracking-wider font-semibold text-gray-500">Apellido</Label>
+                                            <Input
+                                                id="lastName"
+                                                name="lastName_new"
+                                                value={formData.last_name}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
+                                                className="bg-[#0F0F1A] border-[#2D2D44] text-white focus:border-[#FFD700]/50 h-12 rounded-xl"
+                                                placeholder="Pérez"
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Phone */}
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="phone" className="text-xs uppercase tracking-wider font-semibold text-gray-500">Teléfono móvil</Label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">PY</span>
+                                            <Input
+                                                id="phone"
+                                                name="phone_register_field"
+                                                type="tel"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                                className="pl-12 bg-[#0F0F1A] border-[#2D2D44] text-white focus:border-[#FFD700]/50 h-12 rounded-xl font-mono text-lg"
+                                                placeholder="0981 123 456"
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-gray-500">Te enviaremos un código de verificación.</p>
+                                    </div>
+
+                                    {/* Email (Optional) */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between">
+                                            <Label htmlFor="email" className="text-xs uppercase tracking-wider font-semibold text-gray-500">Correo electrónico</Label>
+                                            <span className="text-[10px] text-gray-600 uppercase tracking-widest bg-gray-600/10 px-2 rounded">Opcional</span>
+                                        </div>
                                         <Input
-                                            value={formData.first_name}
-                                            onChange={(e) => updateForm('first_name', e.target.value)}
-                                            placeholder="Juan"
-                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
+                                            id="email"
+                                            name="email_register_field"
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                            className="bg-[#0F0F1A] border-[#2D2D44] text-white focus:border-[#FFD700]/50 h-12 rounded-xl"
+                                            placeholder="ejemplo@go.com"
+                                            autoComplete="off" // Aggressive off
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-gray-400 ml-1">Apellido</Label>
-                                        <Input
-                                            value={formData.last_name}
-                                            onChange={(e) => updateForm('last_name', e.target.value)}
-                                            placeholder="Pérez"
-                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
-                                        />
+
+                                    {/* Password */}
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="password" className="text-xs uppercase tracking-wider font-semibold text-gray-500">Contraseña</Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="password"
+                                                name="password_new_account"
+                                                type={showPassword ? "text" : "password"}
+                                                value={formData.password}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                                className="bg-[#0F0F1A] border-[#2D2D44] text-white focus:border-[#FFD700]/50 h-12 rounded-xl pr-10"
+                                                placeholder="•••••"
+                                                autoComplete="new-password"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                            >
+                                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500">Mínimo 6 caracteres.</p>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-gray-400 ml-1">Teléfono móvil</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🇵🇾</span>
-                                        <Input
-                                            placeholder="0981 123 456"
-                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl pl-12 focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg tracking-wide"
-                                            maxLength={10}
-                                            value={formData.phone}
-                                            onChange={(e) => {
-                                                const val = e.target.value.replace(/\D/g, '');
-                                                if (val.length <= 10) updateForm('phone', val);
-                                            }}
-                                        />
-                                    </div>
-                                    <p className="text-xs text-gray-500 ml-1">Te enviaremos un código de verificación.</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-gray-400 ml-1">Correo electrónico</Label>
-                                    <Input
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => updateForm('email', e.target.value)}
-                                        placeholder="juan@ejemplo.com"
-                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-gray-400 ml-1">Contraseña</Label>
-                                    <Input
-                                        type="password"
-                                        value={formData.password}
-                                        onChange={(e) => updateForm('password', e.target.value)}
-                                        placeholder="••••••••"
-                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 h-14 rounded-xl focus:border-[#FFD700]/50 focus:ring-[#FFD700]/20 transition-all text-lg"
-                                    />
-                                    <p className="text-xs text-gray-500 ml-1">Mínimo 6 caracteres.</p>
-                                </div>
+
+                                    <Button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="w-full bg-[#FFD700] hover:bg-[#FFA500] text-black font-bold h-12 rounded-xl mt-6 shadow-lg shadow-[#FFD700]/10"
+                                    >
+                                        {isLoading ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                                <span>Creando cuenta...</span>
+                                            </div>
+                                        ) : "Continuar"}
+                                    </Button>
+                                </form>
                             </div>
                         )}
 

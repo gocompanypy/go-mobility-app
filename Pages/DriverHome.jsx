@@ -105,6 +105,13 @@ export default function DriverHome() {
   const loadDriverData = async () => {
     try {
       const currentUser = await goApp.auth.me();
+
+      if (!currentUser) {
+        console.warn("No valid session found, redirecting to login");
+        navigate('/driver/login');
+        return;
+      }
+
       setUser(currentUser);
 
       // Check for existing driver profile
@@ -223,11 +230,55 @@ export default function DriverHome() {
       await goApp.entities.Trip.update(activeTrip.id, updates);
 
       if (newStatus === 'completed') {
+        const price = activeTrip.estimated_price || 0;
+
+        // 1. Update Driver Stats (Local & DB)
         await goApp.entities.Driver.update(driver.id, {
           is_available: true,
           total_trips: (driver.total_trips || 0) + 1,
-          total_earnings: (driver.total_earnings || 0) + (activeTrip.estimated_price * 0.8)
+          total_earnings: (driver.total_earnings || 0) + (price * 0.8)
         });
+
+        // 2. Gamification: Add XP
+        try {
+          const baseXp = 50;
+          const bonusXp = Math.floor(price / 10000) * 10;
+          const totalXpToAdd = baseXp + bonusXp;
+
+          const result = await goApp.gamification.addXp(driver.id, totalXpToAdd);
+
+          if (result) {
+            // Update local driver state with new XP/Level
+            setDriver(prev => ({
+              ...prev,
+              current_xp: result.new_xp,
+              level: result.new_level,
+              next_level_xp: result.next_level_xp
+            }));
+
+            if (result.did_level_up) {
+              toast.success(`🎉 ¡SUBISTE DE NIVEL!`, {
+                description: `¡Felicidades! Ahora eres nivel ${result.new_level} 💎`,
+                duration: 8000,
+                style: {
+                  background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                  color: 'black',
+                  border: 'none',
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold'
+                }
+              });
+            } else {
+              toast.success(`+${totalXpToAdd} XP Ganada`, {
+                description: `Progreso: ${result.new_xp} / ${result.next_level_xp} XP`,
+                icon: '⚡'
+              });
+            }
+          }
+        } catch (xpError) {
+          console.error("Error adding XP", xpError);
+        }
+
         setShowRating(true);
       }
 
@@ -356,48 +407,79 @@ export default function DriverHome() {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden relative">
-      {/* Header */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-[1900] transition-all duration-300 ${isSidebarOpen ? 'ml-80' : 'ml-0'}`}
-      >
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl border-b border-[#FFD700]/10" />
+      {/* Premium Floating Header */}
+      <header className={`fixed top-4 left-4 right-4 z-[1900] transition-all duration-300 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl flex items-center justify-between relative overflow-hidden">
+          {/* Noise Texture Overlay */}
+          <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pointer-events-none" />
 
-        <div className="relative flex items-center justify-between px-5 py-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white hover:bg-white/10 rounded-full w-10 h-10"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            <Menu size={24} />
-          </Button>
-
-          {!isSidebarOpen && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <Logo size="sm" />
-            </div>
-          )}
-
-          {/* Online Toggle & Notifications */}
+          {/* Left: Menu & Earnings */}
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              className="text-gray-400 hover:text-white hover:bg-white/10 rounded-full relative"
+              className="text-white hover:bg-white/10 rounded-xl w-10 h-10 transition-transform active:scale-90"
+              onClick={() => setIsSidebarOpen(true)}
             >
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+              <Menu size={20} strokeWidth={2.5} />
             </Button>
 
-            <div className={`flex items-center gap-3 px-1 py-1 rounded-full border transition-colors ${isOnline ? 'bg-[#FFD700]/10 border-[#FFD700]/30' : 'bg-white/5 border-white/10'}`}>
-              <span className={`text-xs font-bold uppercase tracking-wider px-2 transition-colors ${isOnline ? 'text-[#FFD700]' : 'text-gray-400'}`}>
-                {isOnline ? 'Online' : 'Offline'}
-              </span>
-              <Switch
-                checked={isOnline}
-                onCheckedChange={toggleOnline}
-                className="data-[state=checked]:bg-[#FFD700]"
+            {/* Mini Earnings Badge (Visible when online) */}
+            {isOnline && (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#FFD700]/10 border border-[#FFD700]/20 rounded-lg animate-in fade-in slide-in-from-left-4">
+                <div className="text-[#FFD700] font-bold text-sm">
+                  {formatCurrency(todayStats.earnings)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Center: Interactive Status Toggle */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <button
+              onClick={toggleOnline}
+              className={`relative group px-5 py-2 rounded-full border transition-all duration-500 flex items-center gap-3
+                 ${isOnline
+                  ? 'bg-black/60 border-[#FFD700]/50 shadow-[0_0_20px_rgba(255,215,0,0.2)]'
+                  : 'bg-black/60 border-zinc-700 shadow-[0_0_10px_rgba(0,0,0,0.5)]'}`}
+            >
+              <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] transition-colors duration-500
+                 ${isOnline ? 'bg-[#FFD700] text-[#FFD700]' : 'bg-red-500 text-red-500'}`}
               />
+              <span className={`text-sm font-black tracking-wider uppercase transition-colors duration-300
+                 ${isOnline ? 'text-white' : 'text-zinc-500'}`}>
+                {isOnline ? 'CONECTADO' : 'OFFLINE'}
+              </span>
+
+              {/* Hover Glow Effect */}
+              <div className={`absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500
+                 ${isOnline ? 'bg-[#FFD700]/5' : 'bg-red-500/5'}`}
+              />
+            </button>
+          </div>
+
+          {/* Right: Actions & Profile */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/70 hover:text-white hover:bg-white/10 rounded-full w-10 h-10 relative"
+            >
+              <Bell size={20} />
+              <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+            </Button>
+
+            {/* Avatar Pill */}
+            <div className="flex items-center gap-2 pl-1 pr-1 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-colors cursor-pointer" onClick={() => setIsSidebarOpen(true)}>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FFD700] to-orange-500 p-0.5">
+                <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
+                  {driver?.avatar_url ? (
+                    <img src={driver.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-[#FFD700]">{driver?.first_name?.charAt(0) || 'U'}</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -423,59 +505,106 @@ export default function DriverHome() {
           </div>
 
           <div className="px-4 mb-8">
-            <div className="p-4 bg-gradient-to-br from-[#1A1A1A] to-black rounded-2xl border border-white/5 flex items-center gap-4 shadow-lg relative overflow-hidden group">
-              {/* Decorative Glow */}
-              <div className="absolute top-0 right-0 w-20 h-20 bg-[#FFD700]/10 blur-2xl rounded-full -mr-10 -mt-10 group-hover:bg-[#FFD700]/20 transition-all" />
+            <div className="p-4 bg-gradient-to-br from-[#1A1A1A] to-black rounded-2xl border border-white/5 shadow-lg relative overflow-hidden group">
+              {/* Decorative Glow based on Level */}
+              <div className={`absolute top-0 right-0 w-24 h-24 blur-3xl rounded-full -mr-10 -mt-10 transition-all duration-500 
+                  ${driver?.level === 'DIAMANTE' ? 'bg-cyan-500/20' : driver?.level === 'ORO' ? 'bg-[#FFD700]/20' : 'bg-gray-500/10'}`}
+              />
 
-              <div className="w-12 h-12 bg-[#252538] rounded-full flex items-center justify-center text-2xl border border-white/10 relative z-10">
-                {theme.vehicleTypes[driver?.vehicle_type]?.icon || '🚗'}
-              </div>
-              <div className="relative z-10">
-                <p className="font-bold text-white text-lg">{driver?.first_name} {driver?.last_name}</p>
-                <div className="flex items-center gap-1 text-[#FFD700] text-sm font-medium bg-[#FFD700]/10 px-2 py-0.5 rounded-md inline-flex mt-1">
-                  <Star size={12} fill="currentColor" />
-                  {driver?.rating?.toFixed(1) || '5.0'}
+              <div className="flex items-center gap-4 relative z-10">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-2 relative
+                      ${driver?.level === 'ORO' ? 'border-[#FFD700] bg-[#FFD700]/10 text-[#FFD700]' :
+                    driver?.level === 'DIAMANTE' ? 'border-cyan-400 bg-cyan-900/20 text-cyan-400' : 'border-gray-600 bg-[#252538] text-white'}`}>
+                  {theme.vehicleTypes[driver?.vehicle_type]?.icon || '🚗'}
+
+                  {/* Level Badge */}
+                  <div className="absolute -bottom-2 -right-1 bg-black text-[10px] font-bold px-1.5 py-0.5 rounded border border-white/20 uppercase">
+                    {driver?.level ? driver.level.substring(0, 3) : 'BRN'}
+                  </div>
                 </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-white text-lg truncate">{driver?.first_name} {driver?.last_name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1 text-[#FFD700] text-xs font-bold bg-[#FFD700]/10 px-2 py-0.5 rounded-md">
+                      <Star size={10} fill="currentColor" />
+                      {driver?.rating?.toFixed(1) || '5.0'}
+                    </div>
+                    <span className="text-xs text-gray-500 font-mono">
+                      {driver?.current_xp || 0} XP
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* XP Progress Bar */}
+              <div className="mt-4 relative h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                <div
+                  className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out
+                        ${driver?.level === 'ORO' ? 'bg-gradient-to-r from-[#FFD700] to-[#FFA500]' :
+                      driver?.level === 'DIAMANTE' ? 'bg-gradient-to-r from-cyan-400 to-blue-500' : 'bg-gray-500'}`}
+                  style={{ width: `${Math.min(((driver?.current_xp || 0) / (driver?.next_level_xp || 1000)) * 100, 100)}%` }}
+                />
               </div>
             </div>
           </div>
 
-          <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+          <nav className="flex-1 px-4 space-y-3 overflow-y-auto mt-4">
             <button
               onClick={() => navigate(createPageUrl('DriverEarnings'))}
-              className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-all group"
+              className="w-full group relative p-[1px] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,215,0,0.15)] active:scale-95"
             >
-              <span className="flex items-center gap-4 text-gray-300 group-hover:text-[#FFD700] transition-colors">
-                <div className="p-2 bg-white/5 rounded-lg group-hover:bg-[#FFD700]/20 transition-colors">
-                  <DollarSign size={20} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <div className="relative bg-[#1A1A1A] hover:bg-[#202025] rounded-2xl p-4 flex items-center justify-between border border-white/5 group-hover:border-[#FFD700]/30 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#2C2C35] group-hover:bg-[#FFD700]/20 flex items-center justify-center transition-colors duration-300">
+                    <DollarSign size={20} className="text-gray-400 group-hover:text-[#FFD700] transition-colors" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-white font-bold group-hover:text-[#FFD700] transition-colors">Mis Ganancias</span>
+                    <span className="text-xs text-gray-500 group-hover:text-gray-400">Ver balance y retiros</span>
+                  </div>
                 </div>
-                <span className="font-medium">Mis ganancias</span>
-              </span>
-              <ChevronRight size={18} className="text-gray-600 group-hover:text-white" />
+                <ChevronRight size={20} className="text-gray-600 group-hover:text-[#FFD700] group-hover:translate-x-1 transition-all" />
+              </div>
             </button>
+
             <button
               onClick={() => navigate(createPageUrl('DriverHistory'))}
-              className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-all group"
+              className="w-full group relative p-[1px] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] active:scale-95"
             >
-              <span className="flex items-center gap-4 text-gray-300 group-hover:text-[#FFD700] transition-colors">
-                <div className="p-2 bg-white/5 rounded-lg group-hover:bg-[#FFD700]/20 transition-colors">
-                  <TrendingUp size={20} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <div className="relative bg-[#1A1A1A] hover:bg-[#202025] rounded-2xl p-4 flex items-center justify-between border border-white/5 group-hover:border-blue-500/30 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#2C2C35] group-hover:bg-blue-500/20 flex items-center justify-center transition-colors duration-300">
+                    <TrendingUp size={20} className="text-gray-400 group-hover:text-blue-400 transition-colors" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-white font-bold group-hover:text-blue-400 transition-colors">Historial de Viajes</span>
+                    <span className="text-xs text-gray-500 group-hover:text-gray-400">Tus últimas rutas</span>
+                  </div>
                 </div>
-                <span className="font-medium">Historial de viajes</span>
-              </span>
-              <ChevronRight size={18} className="text-gray-600 group-hover:text-white" />
+                <ChevronRight size={20} className="text-gray-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+              </div>
             </button>
+
             <button
               onClick={() => navigate(createPageUrl('DriverDigitalId'))}
-              className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-all group"
+              className="w-full group relative p-[1px] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] active:scale-95"
             >
-              <span className="flex items-center gap-4 text-gray-300 group-hover:text-[#FFD700] transition-colors">
-                <div className="p-2 bg-white/5 rounded-lg group-hover:bg-[#FFD700]/20 transition-colors">
-                  <CreditCard size={20} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <div className="relative bg-[#1A1A1A] hover:bg-[#202025] rounded-2xl p-4 flex items-center justify-between border border-white/5 group-hover:border-purple-500/30 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#2C2C35] group-hover:bg-purple-500/20 flex items-center justify-center transition-colors duration-300">
+                    <CreditCard size={20} className="text-gray-400 group-hover:text-purple-400 transition-colors" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-white font-bold group-hover:text-purple-400 transition-colors">Credencial Digital</span>
+                    <span className="text-xs text-gray-500 group-hover:text-gray-400">Tu ID Oficial</span>
+                  </div>
                 </div>
-                <span className="font-medium">Credencial Digital</span>
-              </span>
-              <ChevronRight size={18} className="text-gray-600 group-hover:text-white" />
+                <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+              </div>
             </button>
           </nav>
 

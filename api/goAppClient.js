@@ -175,6 +175,16 @@ export const goApp = {
                 if (error) throw error;
                 return data[0];
             },
+            getPublicProfile: async (driverId) => {
+                const { data, error } = await supabaseInstance
+                    .rpc('get_driver_public_profile', { p_driver_id: driverId });
+
+                if (error) {
+                    console.error("Error fetching public profile:", error);
+                    return null;
+                }
+                return data && data.length > 0 ? data[0] : null;
+            },
             update: async (id, updates) => {
                 const { data, error } = await supabase.from('drivers').update(updates).eq('id', id).select();
                 if (error) throw error;
@@ -195,6 +205,11 @@ export const goApp = {
                     return [];
                 }
                 return data;
+            },
+            delete: async (id) => {
+                const { error } = await supabase.from('drivers').delete().eq('id', id);
+                if (error) throw error;
+                return true;
             },
             updateLocation: async (lat, lng, rotation = 0) => {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -285,6 +300,11 @@ export const goApp = {
                     ...p,
                     total_trips: p.trips?.[0]?.count || 0
                 }));
+            },
+            delete: async (id) => {
+                const { error } = await supabase.from('passengers').delete().eq('id', id);
+                if (error) throw error;
+                return true;
             }
         },
         Trip: {
@@ -493,6 +513,14 @@ export const goApp = {
                 toggle: async (id) => {
                     console.log(`Mock Toggle Coupon ${id}`);
                     return { success: true };
+                },
+                update: async (id, updates) => {
+                    console.log(`Mock Update Coupon ${id}:`, updates);
+                    return { success: true };
+                },
+                delete: async (id) => {
+                    console.log(`Mock Delete Coupon ${id}`);
+                    return { success: true };
                 }
             },
             Notifications: {
@@ -594,6 +622,46 @@ export const goApp = {
                     return data;
                 }
             },
+            Leads: {
+                list: async () => {
+                    const { data, error } = await supabase.from('driver_leads').select('*').order('created_at', { ascending: false });
+                    if (error) {
+                        console.error("Error fetching leads:", error);
+                        return [];
+                    }
+                    return data;
+                },
+                create: async (data) => {
+                    console.log("Creating Lead in DB:", data);
+
+                    const dbData = {
+                        full_name: data.fullName,
+                        phone: data.phone,
+                        city: data.city,
+                        doc_type: data.docType,
+                        doc_number: data.docNumber,
+                        vehicle_type: data.vehicleType,
+                        vehicle_brand: data.vehicleBrand,
+                        vehicle_model: data.vehicleModel,
+                        availability: data.availability,
+                        suggestions: data.suggestions,
+                        status: 'pending'
+                    };
+
+                    const { data: result, error } = await supabase.from('driver_leads').insert([dbData]).select();
+
+                    if (error) {
+                        console.error("Supabase Insert Error:", error);
+                        throw error;
+                    }
+                    return result[0];
+                },
+                count: async () => {
+                    const { count, error } = await supabase.from('driver_leads').select('*', { count: 'exact', head: true });
+                    if (error) return 0;
+                    return count;
+                }
+            },
             SavedPlace: {
                 list: async () => {
                     const { data: { user } } = await supabase.auth.getUser();
@@ -651,6 +719,21 @@ export const goApp = {
             }
         }
     },
+
+    // --- Gamification ---
+    gamification: {
+        addXp: async (driverId, amount) => {
+            const { data, error } = await supabaseInstance
+                .rpc('add_driver_xp', {
+                    p_driver_id: driverId,
+                    p_xp_amount: amount
+                });
+
+            if (error) throw error;
+            return data;
+        },
+    },
+
     // Real-time Subscriptions
     subscriptions: {
         trip: (tripId, callback) => {

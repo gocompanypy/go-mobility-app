@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
-import { ArrowLeft, Phone, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronRight, Clock, ShieldAlert, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ export default function DriverLogin() {
     const [password, setPassword] = useState('');
     const [focusedField, setFocusedField] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [verificationStatus, setVerificationStatus] = useState(null); // null, 'pending'
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,6 +24,21 @@ export default function DriverLogin() {
 
         try {
             const { user, profile } = await goApp.auth.login(phone, password);
+
+            // Verificación de Estado
+            if (profile?.status !== 'active') {
+                // Si no está activo, verificamos por qué
+                if (profile?.status === 'pending') {
+                    setVerificationStatus('pending'); // Mostramos pantalla de espera
+                    return; // Detenemos la redirección
+                }
+
+                if (profile?.status === 'suspended' || profile?.status === 'blocked') {
+                    toast.error("Tu cuenta ha sido suspendida. Contacta a soporte.");
+                    return;
+                }
+            }
+
             toast.success(`¡Bienvenido de nuevo, ${profile?.first_name || 'Conductor'}! 👋`);
             navigate(createPageUrl('DriverHome'));
         } catch (error) {
@@ -52,6 +69,47 @@ export default function DriverLogin() {
         }
     };
 
+    if (verificationStatus === 'pending') {
+        return (
+            <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                {/* Background Effects */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FFD700]/10 rounded-full blur-[120px] pointer-events-none" />
+
+                <div className="relative z-10 w-full max-w-md bg-[#1A1A1A] border border-[#FFD700]/20 rounded-3xl p-8 shadow-2xl text-center">
+                    <div className="w-20 h-20 bg-[#FFD700]/10 rounded-full flex items-center justify-center mx-auto mb-6 ring-1 ring-[#FFD700]/30">
+                        <Clock size={40} className="text-[#FFD700]" strokeWidth={2} />
+                    </div>
+
+                    <h2 className="text-2xl font-bold mb-3 text-white">
+                        Verificación en Proceso
+                    </h2>
+
+                    <div className="space-y-4 mb-8">
+                        <p className="text-gray-400 leading-relaxed">
+                            Tu cuenta se encuentra en revisión. Estamos validando tu documentación para asegurar la calidad del servicio.
+                        </p>
+
+                        <div className="bg-[#FFD700]/5 rounded-xl p-4 border border-[#FFD700]/10 text-left">
+                            <h4 className="text-[#FFD700] text-sm font-semibold mb-1 flex items-center gap-2">
+                                <ShieldAlert size={14} /> Importante
+                            </h4>
+                            <p className="text-xs text-gray-400">
+                                Este proceso suele tomar menos de 24 horas. Recibirás una notificación cuando tu cuenta sea aprobada.
+                            </p>
+                        </div>
+                    </div>
+
+                    <Button
+                        onClick={() => navigate(createPageUrl('Home'))}
+                        className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10 h-12 rounded-xl"
+                    >
+                        Volver al Inicio
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
             {/* Background Effects */}
@@ -81,7 +139,11 @@ export default function DriverLogin() {
                         <p className="text-gray-400 text-sm">Ingresa tus credenciales para continuar</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
+                        {/* Anti-autofill trap: Hidden inputs to capture browser auto-fill attempts */}
+                        <input type="text" style={{ display: 'none' }} />
+                        <input type="password" style={{ display: 'none' }} />
+
                         <div className="space-y-1.5 group">
                             <Label htmlFor="phone" className={`text-xs uppercase tracking-wider font-semibold transition-colors duration-300 ${focusedField === 'phone' ? 'text-[#FFD700]' : 'text-gray-500'}`}>
                                 Número de teléfono
@@ -92,7 +154,9 @@ export default function DriverLogin() {
                                 </div>
                                 <Input
                                     id="phone"
+                                    name="driver_phone_login_field"
                                     type="tel"
+                                    autoComplete="off"
                                     placeholder="0981 123 456"
                                     value={phone}
                                     onChange={(e) => {
@@ -117,20 +181,28 @@ export default function DriverLogin() {
                             </Label>
                             <div className={`relative transition-all duration-300 rounded-xl overflow-hidden group-focus-within:ring-2 ring-[#FFD700]/50 bg-white/5 border ${focusedField === 'password' ? 'border-[#FFD700]/50' : 'border-white/10'}`}>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <Phone size={20} className={`transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`} />
-                                    {/* Icon reuse for now, ideally Lock icon */}
+                                    <Lock size={20} className={`transition-colors duration-300 ${focusedField === 'password' ? 'text-[#FFD700]' : 'text-gray-500'}`} />
                                 </div>
                                 <Input
                                     id="password"
-                                    type="password"
+                                    name="password_fake_123"
+                                    autoComplete="new-password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     onFocus={() => setFocusedField('password')}
                                     onBlur={() => setFocusedField(null)}
                                     required
-                                    className="bg-transparent border-none text-white h-14 pl-12 text-lg placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0 tracking-wide"
+                                    className="bg-transparent border-none text-white h-14 pl-12 pr-12 text-lg placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0 tracking-wide"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
                             </div>
                         </div>
 

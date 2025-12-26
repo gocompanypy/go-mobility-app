@@ -10,10 +10,22 @@ export const Select = ({ value, onValueChange, children, disabled }) => {
     // Start with a Context.
 
     const [open, setOpen] = React.useState(false);
+    const containerRef = React.useRef(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (containerRef.current && !containerRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     return (
-        <div className="relative">
-            <SelectContext.Provider value={{ value, onValueChange, setOpen }}>
+        <div className="relative" ref={containerRef}>
+            <SelectContext.Provider value={{ value, onValueChange, setOpen, open }}>
                 {children}
             </SelectContext.Provider>
         </div>
@@ -55,7 +67,7 @@ export const SelectContent = ({ children, className }) => {
     if (!open) return null;
 
     return (
-        <div className={`absolute z-50 min-w-[8rem] overflow-hidden rounded-md border border-[#2D2D44] bg-[#1A1A2E] text-white shadow-md animate-in fade-in-80 ${className} top-full mt-1 w-full`}>
+        <div className={`absolute z-50 min-w-[8rem] overflow-y-auto rounded-md border border-[#2D2D44] bg-[#1A1A2E] text-white shadow-md animate-in fade-in-80 max-h-60 ${className} top-full mt-1 w-full scrollbar-hide`}>
             <div className="p-1">
                 {children}
             </div>

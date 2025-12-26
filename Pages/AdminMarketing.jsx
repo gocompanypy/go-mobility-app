@@ -35,6 +35,8 @@ export default function AdminMarketing() {
     const [notifications, setNotifications] = useState([]);
     const [referralConfig, setReferralConfig] = useState(null);
     const [agreements, setAgreements] = useState([]);
+    const [leads, setLeads] = useState([]);
+    const [mockLeadsCount, setMockLeadsCount] = useState(0);
 
     // Create Coupon State
     const [isCreateCouponOpen, setIsCreateCouponOpen] = useState(false);
@@ -69,16 +71,21 @@ export default function AdminMarketing() {
     const loadMarketingData = async () => {
         setIsLoading(true);
         try {
-            const [couponsData, notificationsData, referralData, agreementsData] = await Promise.all([
+            const [couponsData, notificationsData, referralData, agreementsData, leadsData, leadsCountData] = await Promise.all([
                 goApp.entities.Marketing.Coupons.list(),
                 goApp.entities.Marketing.Notifications.list(),
                 goApp.entities.Marketing.Referrals.get(),
-                goApp.entities.Marketing.Agreements.list()
+                goApp.entities.Marketing.Referrals.get(),
+                goApp.entities.Marketing.Agreements.list(),
+                goApp.entities.Marketing.Leads.list(),
+                goApp.entities.Marketing.Leads.count()
             ]);
             setCoupons(couponsData);
             setNotifications(notificationsData);
             setReferralConfig(referralData);
             setAgreements(agreementsData);
+            setLeads(leadsData || []);
+            setMockLeadsCount(leadsCountData || 0);
         } catch (error) {
             console.error("Error loading marketing data:", error);
         }
@@ -103,6 +110,34 @@ export default function AdminMarketing() {
             setCoupons(coupons.map(c => c.id === id ? { ...c, is_active: !c.is_active } : c));
         } catch (error) {
             console.error("Failed to toggle coupon:", error);
+        }
+    };
+
+    const handleRenewCoupon = async (id) => {
+        try {
+            // Extend for 30 days
+            const newDate = new Date();
+            newDate.setDate(newDate.getDate() + 30);
+            const dateStr = newDate.toISOString().split('T')[0];
+
+            await goApp.entities.Marketing.Coupons.update(id, { expires_at: dateStr, is_active: true });
+
+            setCoupons(coupons.map(c =>
+                c.id === id ? { ...c, expires_at: dateStr, is_active: true } : c
+            ));
+            alert("Cupón renovado por 30 días.");
+        } catch (error) {
+            console.error("Failed to renew coupon:", error);
+        }
+    };
+
+    const handleDeleteCoupon = async (id) => {
+        if (!window.confirm("¿Estás seguro de eliminar este cupón?")) return;
+        try {
+            await goApp.entities.Marketing.Coupons.delete(id);
+            setCoupons(coupons.filter(c => c.id !== id));
+        } catch (error) {
+            console.error("Failed to delete coupon:", error);
         }
     };
 
@@ -218,6 +253,12 @@ export default function AdminMarketing() {
                         >
                             Convenios y Estaciones
                         </button>
+                        <button
+                            onClick={() => navigate('/admin/leads')}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-gray-400 hover:text-white hover:bg-[#1A1A2E]"
+                        >
+                            Pre-inscripciones
+                        </button>
                     </div>
                 </div>
             </header>
@@ -238,35 +279,92 @@ export default function AdminMarketing() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {coupons.map(coupon => (
-                                <Card key={coupon.id} className={`border-[#2D2D44] relative overflow-hidden group ${coupon.is_active ? 'bg-[#1A1A2E]' : 'bg-[#1A1A2E]/50 opacity-75'}`}>
-                                    <div className="absolute top-0 right-0 p-4">
-                                        <Badge className={coupon.is_active ? "bg-green-500/20 text-green-400" : "bg-gray-700 text-gray-400"}>
-                                            {coupon.is_active ? 'ACTIVO' : 'INACTIVO'}
-                                        </Badge>
-                                    </div>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-xl font-mono text-[#00D4B1]">{coupon.code}</CardTitle>
-                                        <CardDescription>
-                                            {coupon.type === 'percent' ? `${coupon.discount}% OFF` : `Bs. ${coupon.discount.toLocaleString()} OFF`}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="flex justify-between text-sm text-gray-400 border-t border-[#2D2D44] pt-4">
-                                            <span>Usos: {coupon.used_count} / {coupon.max_uses}</span>
-                                            <span>Expira: {coupon.expires_at}</span>
+                            {coupons.map(coupon => {
+                                // Logic: Determine State
+                                const now = new Date();
+                                const expirationDate = new Date(coupon.expires_at);
+                                const isExpired = now > expirationDate;
+
+                                // State Configuration
+                                let statusConfig = {
+                                    label: 'ACTIVO',
+                                    color: 'bg-green-500/10 text-green-400 border-green-500/20',
+                                    bg: 'bg-[#1A1A2E]'
+                                };
+
+                                if (isExpired) {
+                                    statusConfig = {
+                                        label: 'EXPIRADO',
+                                        color: 'bg-red-500/10 text-red-500 border-red-500/20',
+                                        bg: 'bg-[#1A1A2E]/50 opacity-75'
+                                    };
+                                } else if (!coupon.is_active) {
+                                    statusConfig = {
+                                        label: 'INACTIVO',
+                                        color: 'bg-gray-700/20 text-gray-400 border-gray-700/30',
+                                        bg: 'bg-[#1A1A2E]/50 opacity-75'
+                                    };
+                                }
+
+                                return (
+                                    <Card key={coupon.id} className={`border-[#2D2D44] relative overflow-hidden group ${statusConfig.bg} transition-all duration-300`}>
+                                        <div className="absolute top-0 right-0 p-4">
+                                            <Badge variant="outline" className={`${statusConfig.color} border font-bold tracking-wider`}>
+                                                {statusConfig.label}
+                                            </Badge>
                                         </div>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full border-[#2D2D44] hover:bg-[#252538] text-white"
-                                            onClick={() => toggleCoupon(coupon.id)}
-                                        >
-                                            {coupon.is_active ? 'Desactivar' : 'Activar'}
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className={`text-xl font-mono ${isExpired ? 'text-gray-500 line-through' : 'text-[#00D4B1]'}`}>
+                                                {coupon.code}
+                                            </CardTitle>
+                                            <CardDescription>
+                                                {coupon.type === 'percent' ? `${coupon.discount}% OFF` : `Bs. ${coupon.discount.toLocaleString()} OFF`}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="flex justify-between text-sm text-gray-400 border-t border-[#2D2D44] pt-4">
+                                                <span>Usos: {coupon.used_count} / {coupon.max_uses}</span>
+                                                <span className={`${isExpired ? 'text-red-400 font-bold' : ''}`}>
+                                                    Expira: {coupon.expires_at}
+                                                </span>
+                                            </div>
+
+                                            {/* Action Buttons based on State */}
+                                            <div className="flex gap-2">
+                                                {isExpired ? (
+                                                    <>
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            className="flex-1 bg-[#00D4B1] text-black hover:bg-[#00B89C]"
+                                                            onClick={() => handleRenewCoupon(coupon.id)}
+                                                        >
+                                                            Renovar
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            className="w-10 px-0"
+                                                            onClick={() => handleDeleteCoupon(coupon.id)}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={`w-full border-[#2D2D44] text-white ${coupon.is_active ? 'hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50' : 'hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50'}`}
+                                                        onClick={() => toggleCoupon(coupon.id)}
+                                                    >
+                                                        {coupon.is_active ? 'Desactivar' : 'Activar'}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

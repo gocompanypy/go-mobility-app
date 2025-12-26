@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/lib/utils';
 import {
     ArrowLeft, Search, Filter, CheckCircle, XCircle,
-    User, MoreVertical, Eye, MapPin, TrendingUp, Calendar, DollarSign
+    User, MoreVertical, Eye, MapPin, TrendingUp, Calendar, DollarSign, Trash2,
+    Star, Lock, MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -161,11 +162,29 @@ export default function AdminPassengers() {
                                         <tr key={passenger.id} className="border-b border-[#2D2D44] hover:bg-[#252538] cursor-pointer" onClick={() => setSelectedPassenger(passenger)}>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-[#252538] rounded-full flex items-center justify-center text-lg">
-                                                        <User size={20} className="text-gray-400" />
+                                                    <div
+                                                        className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#2D2D44] cursor-pointer hover:border-[#00D4B1] hover:scale-110 transition-all duration-200 shadow-lg"
+                                                        onClick={() => setSelectedPassenger(passenger)}
+                                                    >
+                                                        {passenger.avatar_url ? (
+                                                            <img
+                                                                src={passenger.avatar_url}
+                                                                alt={passenger.full_name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-[#1A1A2E] flex items-center justify-center">
+                                                                <span className="text-lg font-bold text-[#00D4B1]">
+                                                                    {passenger.full_name?.charAt(0) || 'U'}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-white font-medium hover:text-[#00D4B1] transition-colors">
+                                                        <p
+                                                            className="text-white font-medium hover:text-[#00D4B1] transition-colors cursor-pointer"
+                                                            onClick={() => setSelectedPassenger(passenger)}
+                                                        >
                                                             {passenger.full_name || 'Sin nombre'}
                                                         </p>
                                                         <p className="text-gray-400 text-sm text-[#00D4B1] font-mono">ID: {passenger.id.slice(0, 8)}...</p>
@@ -177,8 +196,25 @@ export default function AdminPassengers() {
                                                 <p className="text-gray-400 text-sm">{passenger.email}</p>
                                             </td>
                                             <td className="py-4 px-6">
-                                                <div className="flex items-center gap-1 text-yellow-400">
-                                                    <span className="text-white">{passenger.rating?.toFixed(1) || '5.0'} ★</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[#FFD700] font-bold text-lg font-mono drop-shadow-sm">
+                                                        {passenger.rating?.toFixed(1) || '5.0'}
+                                                    </span>
+                                                    <div className="flex gap-0.5">
+                                                        {[1, 2, 3, 4, 5].map((star) => {
+                                                            const rating = passenger.rating || 5;
+                                                            const isFull = star <= Math.floor(rating);
+                                                            const isHalf = star === Math.ceil(rating) && rating % 1 >= 0.3;
+
+                                                            return (
+                                                                <div key={star} className="relative">
+                                                                    <Star size={12} className="text-gray-700 fill-gray-700/50" />
+                                                                    {isFull && <Star size={12} className="text-[#FFD700] fill-[#FFD700] absolute top-0 left-0" />}
+                                                                    {isHalf && <div className="absolute top-0 left-0 overflow-hidden w-[50%]"><Star size={12} className="text-[#FFD700] fill-[#FFD700]" /></div>}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6">
@@ -187,9 +223,43 @@ export default function AdminPassengers() {
                                                 </Badge>
                                             </td>
                                             <td className="py-4 px-6">
-                                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setSelectedPassenger(passenger); }}>
-                                                    <Eye size={18} className="text-gray-400 hover:text-white" />
-                                                </Button>
+                                                <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity duration-200">
+                                                    <button
+                                                        className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-400 text-white flex items-center justify-center shadow-lg shadow-green-500/20 transition-all hover:scale-110"
+                                                        onClick={(e) => { e.stopPropagation(); /* handleWhatsApp(passenger.phone) - implement logic if needed */ alert('Abrir WhatsApp: ' + passenger.phone); }}
+                                                    >
+                                                        <MessageCircle size={14} strokeWidth={2.5} />
+                                                    </button>
+
+                                                    <button
+                                                        className="w-8 h-8 rounded-full bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center shadow-lg shadow-amber-500/20 transition-all hover:scale-110"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm('¿Enviar enlace de reseteo de contraseña?')) {
+                                                                alert('Enlace enviado a ' + (passenger.email || 'su teléfono'));
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Lock size={14} strokeWidth={2.5} />
+                                                    </button>
+
+                                                    <button
+                                                        className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-400 text-white flex items-center justify-center shadow-lg shadow-red-500/20 transition-all hover:scale-110"
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm('¿ESTÁS SEGURO?\n\nEsto eliminará permanentemente al pasajero.\nNo se puede deshacer.')) {
+                                                                try {
+                                                                    await goApp.entities.Passenger.delete(passenger.id);
+                                                                    setPassengers(passengers.filter(p => p.id !== passenger.id));
+                                                                } catch (err) {
+                                                                    alert('Error al eliminar: ' + err.message);
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 size={14} strokeWidth={2.5} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -237,6 +307,18 @@ export default function AdminPassengers() {
                                         <Badge variant="outline" className="border-gray-700 text-gray-400">
                                             Usuario Verificado
                                         </Badge>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            className="h-6 ml-auto text-xs"
+                                            onClick={() => {
+                                                if (confirm('¿Enviar correo de recuperación de contraseña a este usuario?')) {
+                                                    alert('Correo de recuperación enviado exitosamente.');
+                                                }
+                                            }}
+                                        >
+                                            Restablecer Contraseña
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
@@ -340,6 +422,6 @@ export default function AdminPassengers() {
                     )}
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

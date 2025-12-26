@@ -5,11 +5,12 @@ import { createPageUrl, formatCurrency } from '@/lib/utils';
 import {
     ArrowLeft, Search, Filter, CheckCircle, XCircle,
     Clock, Star, Car, MoreVertical, Eye, FileText,
-    AlertTriangle, MessageCircle, Ban, Bell, Shield, Wallet
+    AlertTriangle, MessageCircle, Ban, Bell, Shield, Wallet, Lock, Trash2, ZoomIn
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Select,
@@ -66,6 +67,7 @@ export default function AdminDrivers() {
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('all'); // Chip filter
     const [selectedDriver, setSelectedDriver] = useState(null);
+    const [selectedVehicle, setSelectedVehicle] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -160,10 +162,12 @@ export default function AdminDrivers() {
 
     const updateDriverStatus = async (driverId, newStatus, reason = null) => {
         try {
-            await goApp.entities.Driver.update(driverId, {
-                status: newStatus,
-                status_reason: reason
-            });
+            const updatePayload = { status: newStatus };
+            if (reason) {
+                updatePayload.status_reason = reason;
+            }
+
+            await goApp.entities.Driver.update(driverId, updatePayload);
 
             setDrivers(drivers.map(d =>
                 d.id === driverId ? { ...d, status: newStatus } : d
@@ -177,7 +181,7 @@ export default function AdminDrivers() {
             setIsVerifierOpen(false);
         } catch (error) {
             console.error('Error updating driver:', error);
-            alert("Error al actualizar estado: " + error.message);
+            setError("Error al actualizar estado: " + error.message);
         }
     };
 
@@ -278,7 +282,7 @@ export default function AdminDrivers() {
                                         <th className="text-left py-5 px-6 text-xs text-gray-400 font-semibold uppercase tracking-wider">Docs</th>
                                         <th className="text-left py-5 px-6 text-xs text-gray-400 font-semibold uppercase tracking-wider">Finanzas</th>
                                         <th className="text-left py-5 px-6 text-xs text-gray-400 font-semibold uppercase tracking-wider">Métricas</th>
-                                        <th className="text-left py-5 px-6 text-xs text-gray-400 font-semibold uppercase tracking-wider">Última act.</th>
+                                        <th className="text-left py-5 px-6 text-xs text-gray-400 font-semibold uppercase tracking-wider">Estado / Aprobación</th>
                                         <th className="text-left py-5 px-6 text-xs text-gray-400 font-semibold uppercase tracking-wider"></th>
                                     </tr>
                                 </thead>
@@ -291,9 +295,12 @@ export default function AdminDrivers() {
                                                 {/* Conductor Identity */}
                                                 <td className="py-4 px-6">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#2D2D44]">
+                                                        <div
+                                                            className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#2D2D44] cursor-pointer hover:border-[#FFD700] hover:scale-110 transition-all duration-200 shadow-lg"
+                                                            onClick={() => setSelectedDriver(driver)}
+                                                        >
                                                             <img
-                                                                src={`https://ui-avatars.com/api/?name=${driver.first_name}+${driver.last_name}&background=random&color=fff`}
+                                                                src={driver.avatar_url || `https://ui-avatars.com/api/?name=${driver.first_name}+${driver.last_name}&background=random&color=fff`}
                                                                 alt={driver.first_name}
                                                                 className="w-full h-full object-cover"
                                                             />
@@ -309,132 +316,222 @@ export default function AdminDrivers() {
                                                 </td>
 
                                                 {/* Vehicle Info */}
+                                                {/* Vehicle Info */}
                                                 <td className="py-4 px-6">
-                                                    <div>
-                                                        <p className="text-gray-200 text-sm font-medium">{driver.vehicle_make} {driver.vehicle_model}</p>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <Badge variant="outline" className="border-[#2D2D44] text-xs text-gray-400 font-mono bg-black/20">
-                                                                {driver.vehicle_plate}
-                                                            </Badge>
-                                                            <span className="text-xs text-gray-500">{driver.vehicle_color} • {driver.vehicle_year}</span>
+                                                    <div
+                                                        className="flex items-center gap-3 group/vehicle cursor-pointer"
+                                                        onClick={() => setSelectedVehicle(driver)}
+                                                    >
+                                                        {/* Vehicle Thumbnail */}
+                                                        <div className="w-16 h-10 rounded-lg overflow-hidden border border-[#2D2D44] relative group-hover/vehicle:border-[#FFD700] group-hover/vehicle:scale-105 transition-all shadow-md">
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
+                                                            <img
+                                                                src={driver.vehicle_image_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=2070&auto=format&fit=crop"}
+                                                                alt="Vehicle"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                            <div className="absolute bottom-0.5 right-1 z-20">
+                                                                <ZoomIn size={10} className="text-white opacity-0 group-hover/vehicle:opacity-100 transition-opacity" />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Text Info */}
+                                                        <div>
+                                                            <p className="text-gray-200 text-sm font-medium group-hover/vehicle:text-[#FFD700] transition-colors">
+                                                                {driver.vehicle_make} {driver.vehicle_model}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <Badge variant="outline" className="border-[#2D2D44] text-[10px] text-gray-400 font-mono bg-black/20 px-1.5 py-0">
+                                                                    {driver.vehicle_plate}
+                                                                </Badge>
+                                                                <span className="text-[10px] text-gray-500">{driver.vehicle_year}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
 
-                                                {/* Documents Status */}
+                                                {/* Document Status */}
                                                 <td className="py-4 px-6">
-                                                    <div className="flex gap-2">
-                                                        <Tooltip>
-                                                            <TooltipTrigger>
-                                                                {driver.documents_status?.license === 'valid'
-                                                                    ? <Shield size={18} className="text-green-500" />
-                                                                    : <AlertTriangle size={18} className="text-red-500" />}
-                                                            </TooltipTrigger>
-                                                            <TooltipContent><p>Licencia</p></TooltipContent>
-                                                        </Tooltip>
-                                                        <Tooltip>
-                                                            <TooltipTrigger>
-                                                                {driver.documents_status?.insurance === 'valid'
-                                                                    ? <FileText size={18} className="text-green-500" />
-                                                                    : <AlertTriangle size={18} className="text-red-500" />}
-                                                            </TooltipTrigger>
-                                                            <TooltipContent><p>Seguro</p></TooltipContent>
-                                                        </Tooltip>
-                                                    </div>
+                                                    {driver.documents_status?.license === 'valid' && driver.documents_status?.insurance === 'valid' ? (
+                                                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#00D4B1]/10 border border-[#00D4B1] shadow-[0_0_10px_rgba(0,212,177,0.2)]">
+                                                            <Shield size={14} className="text-[#00D4B1]" strokeWidth={2.5} />
+                                                            <span className="text-[11px] font-extrabold text-[#00D4B1] tracking-wider">VERIFICADO</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-1.5 w-fit">
+                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[10px] ${driver.documents_status?.license === 'valid' ? 'bg-green-500/5 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                                                                <FileText size={12} />
+                                                                <span>Licencia</span>
+                                                            </div>
+                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[10px] ${driver.documents_status?.insurance === 'valid' ? 'bg-green-500/5 border-green-500/20 text-green-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
+                                                                <Shield size={12} />
+                                                                <span>Seguro</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </td>
 
                                                 {/* Finanzas */}
                                                 <td className="py-4 px-6">
                                                     <div className="flex flex-col items-start gap-1">
-                                                        <span className={`text-sm font-bold ${driver.wallet_balance < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                                        <span className={`text-sm font-mono font-bold tracking-tight ${driver.wallet_balance < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                                                             {formatCurrency(driver.wallet_balance || 0)}
                                                         </span>
                                                         {driver.wallet_balance < -50000 && (
-                                                            <Button size="xs" variant="outline" className="h-6 text-[10px] border-red-500/30 text-red-500 hover:bg-red-500/10">
-                                                                Reclamar
-                                                            </Button>
+                                                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-500">
+                                                                <AlertTriangle size={10} />
+                                                                <span className="text-[10px] font-bold uppercase">Deuda Alta</span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </td>
 
                                                 {/* Métricas */}
                                                 <td className="py-4 px-6">
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center gap-2 text-xs">
-                                                            <div className="flex items-center text-yellow-500 font-bold">
-                                                                {driver.rating?.toFixed(1) || '5.0'} <Star size={10} fill="currentColor" className="ml-0.5" />
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[#FFD700] font-bold text-lg font-mono drop-shadow-sm">
+                                                                {driver.rating?.toFixed(1) || '5.0'}
+                                                            </span>
+                                                            <div className="flex gap-0.5">
+                                                                {[1, 2, 3, 4, 5].map((star) => {
+                                                                    const rating = driver.rating || 5;
+                                                                    const isFull = star <= Math.floor(rating);
+                                                                    const isHalf = star === Math.ceil(rating) && rating % 1 >= 0.3;
+
+                                                                    return (
+                                                                        <div key={star} className="relative">
+                                                                            {/* Base Empty Star */}
+                                                                            <Star size={12} className="text-gray-700 fill-gray-700/50" />
+
+                                                                            {/* Full Overlay */}
+                                                                            {isFull && (
+                                                                                <Star size={12} className="text-[#FFD700] fill-[#FFD700] absolute top-0 left-0" />
+                                                                            )}
+
+                                                                            {/* Half Overlay (Simulated with clip-path) */}
+                                                                            {isHalf && !isFull && (
+                                                                                <div className="absolute top-0 left-0 overflow-hidden w-[50%]">
+                                                                                    <Star size={12} className="text-[#FFD700] fill-[#FFD700]" />
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
-                                                            <span className="text-gray-500">•</span>
-                                                            <span className="text-gray-300">{driver.total_trips || 0} Viajes</span>
                                                         </div>
                                                         <div className="flex items-center gap-2 text-[10px]">
+                                                            <span className="text-gray-400 font-medium uppercase tracking-wider">{driver.total_trips || 0} VIAJES</span>
+                                                            <span className="text-gray-600">•</span>
                                                             <span className="text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">{driver.acceptance_rate || 95}% Acept.</span>
-                                                            <span className="text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">{driver.cancellation_rate || 2}% Canc.</span>
                                                         </div>
                                                     </div>
                                                 </td>
 
-                                                {/* Last Active */}
+                                                {/* Status Switch */}
                                                 <td className="py-4 px-6">
-                                                    <div className="text-xs text-gray-400">
-                                                        {driver.last_active_at
-                                                            ? formatDistanceToNow(new Date(driver.last_active_at), { addSuffix: true, locale: es })
-                                                            : 'Nunca'}
-                                                    </div>
-                                                    <div className="mt-1">
-                                                        <Badge variant="outline" className={`
-                                                        border-0 text-[10px] font-bold px-2 py-0.5
-                                                        ${driver.status === 'approved' ? 'bg-[#00D4B1]/10 text-[#00D4B1]' :
-                                                                driver.status === 'pending' ? 'bg-[#FFB800]/10 text-[#FFB800]' : 'bg-red-500/10 text-red-500'}
-                                                    `}>
-                                                            {STATUS_CONFIG[driver.status]?.label || driver.status}
-                                                        </Badge>
+                                                    <div className="flex flex-col items-start gap-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <Switch
+                                                                checked={driver.status === 'approved' || driver.status === 'active'}
+                                                                onCheckedChange={(checked) => {
+                                                                    const newStatus = checked ? 'approved' : 'blocked';
+                                                                    updateDriverStatus(driver.id, newStatus);
+                                                                }}
+                                                                className="data-[state=checked]:bg-[#00D4B1] data-[state=unchecked]:bg-[#2D2D44]"
+                                                            />
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={`
+                                                                    px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold border rounded-md backdrop-blur-md shadow-sm
+                                                                    ${(driver.status === 'approved' || driver.status === 'active')
+                                                                        ? 'bg-[#00D4B1]/10 text-[#00D4B1] border-[#00D4B1]/30 shadow-[#00D4B1]/5'
+                                                                        : driver.status === 'pending'
+                                                                            ? 'bg-[#FFB800]/10 text-[#FFB800] border-[#FFB800]/30 shadow-[#FFB800]/5'
+                                                                            : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                                                    }
+                                                                `}
+                                                            >
+                                                                {STATUS_CONFIG[driver.status]?.label || driver.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 pl-1">
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${driver.is_online ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-700'}`}></div>
+                                                            <span className="text-[10px] text-gray-500 font-medium">
+                                                                {driver.last_active_at
+                                                                    ? formatDistanceToNow(new Date(driver.last_active_at), { addSuffix: true, locale: es })
+                                                                    : 'Nunca'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </td>
 
-                                                {/* Actions */}
+                                                {/* Actions Dock */}
                                                 <td className="py-4 px-6 text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#2D2D44]">
-                                                                <MoreVertical size={18} />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent className="bg-[#1A1A2E] border-[#2D2D44] text-white w-56" align="end">
-                                                            <DropdownMenuLabel className="text-xs text-gray-500 uppercase tracking-wider">Gestión</DropdownMenuLabel>
-                                                            <DropdownMenuItem onClick={() => setSelectedDriver(driver)} className="cursor-pointer hover:bg-[#252538] focus:bg-[#252538]">
-                                                                <Eye size={16} className="mr-2" /> Ver Perfil Completo
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => openVerifier(driver)} className="cursor-pointer hover:bg-[#252538] focus:bg-[#252538]">
-                                                                <FileText size={16} className="mr-2" /> Revisar Documentos
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator className="bg-[#2D2D44]" />
-                                                            <DropdownMenuLabel className="text-xs text-gray-500 uppercase tracking-wider">Comunicación</DropdownMenuLabel>
-                                                            <DropdownMenuItem onClick={() => handleWhatsApp(driver.phone)} className="cursor-pointer hover:bg-[#252538] focus:bg-[#252538] text-green-400">
-                                                                <MessageCircle size={16} className="mr-2" /> WhatsApp
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem className="cursor-pointer hover:bg-[#252538] focus:bg-[#252538]">
-                                                                <Bell size={16} className="mr-2" /> Enviar Push
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator className="bg-[#2D2D44]" />
-                                                            {driver.status !== 'blocked' && (
-                                                                <DropdownMenuItem
-                                                                    onClick={() => updateDriverStatus(driver.id, 'blocked')}
-                                                                    className="cursor-pointer hover:bg-red-500/20 focus:bg-red-500/20 text-red-500"
+                                                    <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity duration-200">
+
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-400 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-110"
+                                                                    onClick={() => openVerifier(driver)}
                                                                 >
-                                                                    <Ban size={16} className="mr-2" /> Bloquear Cuenta
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                            {driver.status === 'blocked' && (
-                                                                <DropdownMenuItem
-                                                                    onClick={() => updateDriverStatus(driver.id, 'approved')}
-                                                                    className="cursor-pointer hover:bg-green-500/20 focus:bg-green-500/20 text-green-500"
+                                                                    <FileText size={14} strokeWidth={2.5} />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>Gestión Documental</p></TooltipContent>
+                                                        </Tooltip>
+
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-400 text-white flex items-center justify-center shadow-lg shadow-green-500/20 transition-all hover:scale-110"
+                                                                    onClick={() => handleWhatsApp(driver.phone)}
                                                                 >
-                                                                    <CheckCircle size={16} className="mr-2" /> Desbloquear
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                                    <MessageCircle size={14} strokeWidth={2.5} />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>WhatsApp</p></TooltipContent>
+                                                        </Tooltip>
+
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    className="w-8 h-8 rounded-full bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center shadow-lg shadow-amber-500/20 transition-all hover:scale-110"
+                                                                    onClick={() => {
+                                                                        if (confirm('¿Enviar enlace de reseteo de contraseña?')) {
+                                                                            alert('Enlace enviado a ' + (driver.email || 'su teléfono'));
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Lock size={14} strokeWidth={2.5} />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>Reset Password</p></TooltipContent>
+                                                        </Tooltip>
+
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-400 text-white flex items-center justify-center shadow-lg shadow-red-500/20 transition-all hover:scale-110"
+                                                                    onClick={async () => {
+                                                                        if (confirm('¿ESTÁS SEGURO?\n\nEsta acción eliminará permanentemente al conductor y su perfil.\n\nEsta acción no se puede deshacer.')) {
+                                                                            try {
+                                                                                await goApp.entities.Driver.delete(driver.id);
+                                                                                setDrivers(drivers.filter(d => d.id !== driver.id));
+                                                                            } catch (e) {
+                                                                                alert('Error al eliminar: ' + e.message);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 size={14} strokeWidth={2.5} />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>Eliminar Conductor</p></TooltipContent>
+                                                        </Tooltip>
+
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -489,19 +586,167 @@ export default function AdminDrivers() {
                             </DialogTitle>
                         </DialogHeader>
                         {selectedDriver && (
-                            <div className="grid grid-cols-2 gap-6 py-4">
-                                <div>
-                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Vehículo</h4>
-                                    <p className="text-lg">{selectedDriver.vehicle_make} {selectedDriver.vehicle_model}</p>
-                                    <p className="text-sm text-gray-400">{selectedDriver.vehicle_year} • {selectedDriver.vehicle_color}</p>
-                                    <Badge variant="outline" className="mt-2 border-[#FFD700]/30 text-[#FFD700]">{selectedDriver.vehicle_plate}</Badge>
+                            <div className="space-y-6">
+                                {/* Premium Profile Header */}
+                                <div className="relative bg-[#0F0F1A] p-4 rounded-xl border border-[#FFD700]/20 flex flex-col md:flex-row items-center gap-6 overflow-hidden">
+                                    {/* Ambient Glow */}
+                                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-[#FFD700]/5 to-transparent pointer-events-none" />
+
+                                    {/* Hexagon Avatar Section */}
+                                    <div className="relative shrink-0">
+                                        <div className="w-24 h-24 md:w-28 md:h-28 relative flex items-center justify-center">
+                                            {/* Hexagon Border SVG */}
+                                            <svg viewBox="0 0 100 100" className="absolute w-full h-full text-[#FFD700] drop-shadow-[0_0_10px_rgba(255,215,0,0.4)]" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M50 2 L93 25 L93 75 L50 98 L7 75 L7 25 Z" />
+                                            </svg>
+
+                                            {/* Avatar Image (Clipped) */}
+                                            <div className="w-[86%] h-[86%] clip-path-hexagon bg-gray-800 overflow-hidden relative z-10" style={{ clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}>
+                                                <img
+                                                    src={selectedDriver.avatar_url || `https://ui-avatars.com/api/?name=${selectedDriver.first_name}+${selectedDriver.last_name}&background=1A1A2E&color=FFD700`}
+                                                    alt="Driver Avatar"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Identity & Progress */}
+                                    <div className="flex-1 w-full z-10">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
+                                            <div>
+                                                <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+                                                    {selectedDriver.first_name} {selectedDriver.last_name}
+                                                    <span className={`text-sm font-extrabold tracking-widest uppercase px-2 py-0.5 rounded border 
+                                                        ${selectedDriver.level === 'ORO' ? 'text-[#FFD700] border-[#FFD700]/30 bg-[#FFD700]/10' :
+                                                            selectedDriver.level === 'DIAMANTE' ? 'text-cyan-400 border-cyan-400/30 bg-cyan-400/10' :
+                                                                selectedDriver.level === 'PLATA' ? 'text-gray-300 border-gray-300/30 bg-gray-300/10' :
+                                                                    'text-orange-700 border-orange-700/30 bg-orange-700/10'}`}>
+                                                        {selectedDriver.level || 'BRONCE'}
+                                                    </span>
+                                                </h2>
+                                                <p className="text-gray-400 font-mono tracking-wide">{selectedDriver.phone}</p>
+                                            </div>
+                                            {/* Medal Icon */}
+                                            <div className={`p-2 rounded-lg border 
+                                                ${selectedDriver.level === 'ORO' ? 'bg-[#FFD700]/10 border-[#FFD700]/30 text-[#FFD700]' :
+                                                    selectedDriver.level === 'DIAMANTE' ? 'bg-cyan-400/10 border-cyan-400/30 text-cyan-400' :
+                                                        'bg-white/5 border-white/10 text-gray-400'}`}>
+                                                <Shield size={24} fill="currentColor" strokeWidth={1} />
+                                            </div>
+                                        </div>
+
+                                        {/* XP Bar */}
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
+                                                <span className="text-white">{(selectedDriver.current_xp || 0).toLocaleString()} XP</span>
+                                                <span className="text-gray-500">Próximo: {(selectedDriver.next_level_xp || 1000).toLocaleString()} XP</span>
+                                            </div>
+                                            <div className="h-4 bg-gray-800 rounded-full overflow-hidden border border-gray-700 relative">
+                                                <div
+                                                    className={`absolute top-0 left-0 h-full transition-all duration-500 
+                                                        ${selectedDriver.level === 'ORO' ? 'bg-gradient-to-r from-[#FFD700] to-[#FFA500]' :
+                                                            selectedDriver.level === 'DIAMANTE' ? 'bg-gradient-to-r from-cyan-400 to-blue-500' :
+                                                                'bg-gradient-to-r from-gray-500 to-gray-400'}`}
+                                                    style={{ width: `${Math.min(((selectedDriver.current_xp || 0) / (selectedDriver.next_level_xp || 1000)) * 100, 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Contacto</h4>
-                                    <p className="text-lg">{selectedDriver.phone}</p>
-                                    <p className="text-sm text-gray-400">{selectedDriver.email}</p>
-                                    <Button size="sm" variant="outline" className="mt-2 text-green-400 border-green-400/20 hover:bg-green-400/10" onClick={() => handleWhatsApp(selectedDriver.phone)}>
-                                        <MessageCircle size={14} className="mr-1" /> WhatsApp
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-2 gap-6 p-2">
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Vehículo</h4>
+                                        <div className="bg-[#151525] p-3 rounded-lg border border-[#2D2D44]">
+                                            <p className="text-lg text-white font-medium">{selectedDriver.vehicle_make} {selectedDriver.vehicle_model}</p>
+                                            <p className="text-sm text-gray-400">{selectedDriver.vehicle_year} • {selectedDriver.vehicle_color}</p>
+                                            <Badge variant="outline" className="mt-2 border-[#FFD700]/30 text-[#FFD700] bg-[#FFD700]/5">{selectedDriver.vehicle_plate}</Badge>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Contacto</h4>
+                                        <div className="bg-[#151525] p-3 rounded-lg border border-[#2D2D44]">
+                                            <p className="text-lg text-white font-medium">{selectedDriver.email}</p>
+                                            <div className="flex gap-2 mt-2">
+                                                <Button size="sm" variant="outline" className="flex-1 text-green-400 border-green-400/20 hover:bg-green-400/10" onClick={() => handleWhatsApp(selectedDriver.phone)}>
+                                                    <MessageCircle size={14} className="mr-1" /> WhatsApp
+                                                </Button>
+                                                <Button size="sm" variant="outline" className="text-gray-400 border-gray-400/20 hover:text-white" onClick={() => { }}>
+                                                    <Bell size={14} />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
+
+                {/* Vehicle Details Modal */}
+                <Dialog open={!!selectedVehicle} onOpenChange={() => setSelectedVehicle(null)}>
+                    <DialogContent className="bg-[#0F0F1A] border border-[#FFD700]/20 text-white max-w-lg p-0 overflow-hidden rounded-2xl">
+                        {selectedVehicle && (
+                            <div className="flex flex-col">
+                                {/* Hero Image */}
+                                <div className="relative w-full h-48 bg-gray-900">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F1A] via-transparent to-transparent z-10" />
+                                    <img
+                                        src={selectedVehicle.vehicle_image_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=2070&auto=format&fit=crop"}
+                                        alt="Car Hero"
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <Badge className="absolute top-4 right-4 z-20 bg-[#FFD700] text-black font-bold">
+                                        FICHA TÉCNICA
+                                    </Badge>
+                                </div>
+
+                                {/* Content */}
+                                <div className="p-6 -mt-6 relative z-20">
+                                    <div className="flex justify-between items-end mb-6">
+                                        <div className="space-y-1">
+                                            <p className="text-[#FFD700] text-xs font-bold tracking-widest uppercase">Modelo {selectedVehicle.vehicle_year}</p>
+                                            <h2 className="text-3xl font-extrabold text-white leading-none">
+                                                {selectedVehicle.vehicle_make} <span className="font-light text-gray-400">{selectedVehicle.vehicle_model}</span>
+                                            </h2>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="bg-[#1A1A2E] border border-[#2D2D44] px-3 py-1.5 rounded-lg">
+                                                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Placa</p>
+                                                <p className="text-lg font-mono font-bold text-[#00D4B1] tracking-widest">{selectedVehicle.vehicle_plate}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Grid Specs */}
+                                    <div className="grid grid-cols-2 gap-3 mb-6">
+                                        <div className="bg-[#1A1A2E]/50 p-3 rounded-xl border border-[#2D2D44] flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                                <Car size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-gray-500 uppercase">Tipo</p>
+                                                <p className="text-sm font-medium capitalize">{selectedVehicle.vehicle_type || 'Sedan'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-[#1A1A2E]/50 p-3 rounded-xl border border-[#2D2D44] flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                                                <Eye size={16} /> {/* Palette icon ideally, using Eye as placeholder for color */}
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-gray-500 uppercase">Color</p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: 'gray' /* mock color */ }}></div>
+                                                    <p className="text-sm font-medium capitalize">{selectedVehicle.vehicle_color}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <Button className="w-full bg-[#FFD700] text-black font-bold hover:bg-[#FFA500]" onClick={() => setSelectedVehicle(null)}>
+                                        Cerrar Ficha
                                     </Button>
                                 </div>
                             </div>

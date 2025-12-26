@@ -25,10 +25,14 @@ import DriverWelcome from './Pages/DriverWelcome';
 import DriverLogin from './Pages/DriverLogin';
 import DriverSignup from './Pages/DriverSignup';
 import DriverRegister from './Pages/DriverRegister';
+import DriverPreSignup from './Pages/DriverPreSignup';
+import DriverBenefits from './Pages/DriverBenefits';
 import DriverDocuments from './Pages/DriverDocuments';
 import DriverSuccess from './Pages/DriverSuccess';
 import DriverHome from './Pages/DriverHome';
 import DriverEarnings from './Pages/DriverEarnings';
+import DriverHistory from './Pages/DriverHistory';
+import DriverVerification from './Pages/DriverVerification';
 import DriverDigitalId from './Pages/DriverDigitalId';
 
 // Admin Pages
@@ -42,6 +46,7 @@ import AdminFleet from './Pages/AdminFleet';
 import AdminFinance from './Pages/AdminFinance';
 import AdminLogin from './Pages/AdminLogin';
 import AdminMarketing from './Pages/AdminMarketing';
+import AdminLeads from './Pages/AdminLeads';
 import AdminSecurity from './Pages/AdminSecurity';
 import AdminLayout from './components/layouts/AdminLayout';
 
@@ -67,6 +72,8 @@ export default function App() {
 
                 {/* Driver Auth Flow */}
                 <Route path="/driver/welcome" element={<DriverWelcome />} />
+                <Route path="/driver/benefits" element={<DriverBenefits />} />
+                <Route path="/driver/pre-signup" element={<DriverPreSignup />} />
                 <Route path="/driver/login" element={<DriverLogin />} />
                 <Route path="/driver/signup" element={<Navigate to="/driver/register" replace />} />
                 <Route path="/driver/register" element={<DriverRegister />} />
@@ -89,7 +96,11 @@ export default function App() {
                 <Route path="/driver/home" element={<DriverHome />} />
                 <Route path="/driver/earnings" element={<DriverEarnings />} />
                 <Route path="/driver/digital-id" element={<DriverDigitalId />} />
-                <Route path="/driver/history" element={<DriverEarnings />} /> {/* Fallback if page doesn't exist yet */}
+                <Route path="/driver/history" element={<DriverHistory />} />
+
+
+                {/* Public Verification Route */}
+                <Route path="/verify/driver/:id" element={<DriverVerification />} />
 
                 {/* Admin Routes (Standalone Layout) */}
                 {/* Admin Routes with Layout */}
@@ -107,6 +118,7 @@ export default function App() {
                     <Route path="/admin/fleet" element={<AdminFleet />} />
                     <Route path="/admin/finance" element={<AdminFinance />} />
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
+                    <Route path="/admin/leads" element={<AdminLeads />} />
                     <Route path="/admin/security" element={<AdminSecurity />} />
                 </Route>
 
